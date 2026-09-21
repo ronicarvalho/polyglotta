@@ -2,6 +2,10 @@
 
 **Contexto:** revisão completa do código (~740 linhas C#) + análise de aderência ao PRD-001 e ADRs 0001–0004. Gerada por Claude Code a pedido do time. Nenhuma correção foi aplicada ainda — este documento é o ponto de retomada.
 
+## Progresso
+
+- **2026-09-21** — ADR-0005 aceito; migração para NAudio 3.x concluída. Resolvidos: **B1, B2, B3, C3, C4** (captura pede o formato canônico ao engine, `CanonicalFramer` fatia em 20 ms, default = `Role.Communications`). Novo projeto `tests/Polyglotta.Audio.Windows.Tests` com regressão do B3. M0 atingido. Pendentes: C1, C2, C5, C6, menores, docs.
+
 ## Estado verificado
 
 - `dotnet build src/Polyglotta.sln` → **falha no restore** (NU1201).

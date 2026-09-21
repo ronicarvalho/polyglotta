@@ -21,5 +21,11 @@ No Meet/Teams, selecione **CABLE Output** como microfone.
 
 Este repositório é preparado para desenvolvimento agêntico: contexto em `CLAUDE.md`, requisitos em `docs/prd/`, decisões em `docs/adr/`, manuais de bibliotecas em `docs/man` skills do projeto em `.claude/skills/` e o comando `/new-adr` em `.claude/commands/`.
 
-## Análise de projeto
-Já existe uma solution criada no diretório `src/Polyglotta.sln` com seus respectivos projetos, mas por questões de versionamento do NAudio, os projetos devem ser analisados e compilados antes de iniciar qualquer codificação
+## Build e testes
+
+```bash
+dotnet build src/Polyglotta.sln
+dotnet test src/Polyglotta.sln
+```
+
+A camada de áudio usa NAudio 3.x com a API de builders (`WasapiRecorderBuilder`/`WasapiPlayerBuilder`) — ver ADR-0005. As classes `WasapiCapture`/`WasapiOut` do NAudio 2.x estão obsoletas e são tratadas como erro de compilação em `Polyglotta.Audio.Windows`.

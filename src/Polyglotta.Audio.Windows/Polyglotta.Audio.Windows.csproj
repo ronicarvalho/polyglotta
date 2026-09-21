@@ -4,9 +4,14 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>14</LangVersion>
+    <!-- ADR-0005: obsolete NAudio 2.x APIs are errors, not warnings. -->
+    <WarningsAsErrors>$(WarningsAsErrors);CS0618</WarningsAsErrors>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="NAudio" Version="3.1.0" />
     <ProjectReference Include="..\Polyglotta.Core\Polyglotta.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Polyglotta.Audio.Windows.Tests" />
   </ItemGroup>
 </Project>

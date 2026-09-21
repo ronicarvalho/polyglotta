@@ -37,4 +37,11 @@ public sealed class WindowsAudioDeviceEnumerator : IAudioDeviceEnumerator
         using var mm = new MMDeviceEnumerator();
         return mm.GetDevice(id);
     }
+
+    /// <summary>Default communications endpoint — the same one <see cref="ListDevices"/> flags as default.</summary>
+    internal static MMDevice GetDefault(DataFlow flow)
+    {
+        using var mm = new MMDeviceEnumerator();
+        return mm.GetDefaultAudioEndpoint(flow, Role.Communications);
+    }
 }

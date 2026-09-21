@@ -1,60 +1,40 @@
-using System.Threading.Channels;
 using Polyglotta.Core.Audio;
+using NAudio.CoreAudioApi;
 using NAudio.Wave;
 
 namespace Polyglotta.Audio.Windows;
 
 /// <summary>
-/// Captures whatever the system plays on the default render device (the remote
-/// party's voice in Meet/Teams) via WASAPI loopback.
-/// WARNING: this also captures audio this app plays on the same device — route
-/// inbound translated playback to a different device (audio-realtime skill).
+/// Captures whatever the system plays on a render device (the remote party's voice in
+/// Meet/Teams) via WASAPI loopback.
+/// <para>
+/// WARNING: this also captures audio this app plays on the same device — route inbound
+/// translated playback to a different device (audio-realtime skill). Compare
+/// <see cref="WasapiRecorderCapture.DeviceId"/> with the render device before starting.
+/// </para>
+/// WASAPI loopback only delivers packets while some application is rendering on the
+/// device; with nothing playing, <see cref="WasapiRecorderCapture.Frames"/> stays silent
+/// (verified 2026-09-21, NAudio 3.1.0).
 /// </summary>
-public sealed class WasapiLoopbackSystemCapture : ISystemAudioCapture
+public sealed class WasapiLoopbackSystemCapture : WasapiRecorderCapture, ISystemAudioCapture
 {
-    private readonly Channel<AudioFrame> _channel;
-    private readonly WasapiLoopbackCapture _capture;
-    private readonly CanonicalFormatConverter _converter;
-
-    public ChannelReader<AudioFrame> Frames => _channel.Reader;
-
+    /// <param name="renderDeviceId">Render endpoint ID to tap, or null for the default communications device.</param>
     public WasapiLoopbackSystemCapture(string? renderDeviceId = null)
+        : base(Build(renderDeviceId))
     {
-        _channel = Channel.CreateBounded<AudioFrame>(new BoundedChannelOptions(200)
-        {
-            FullMode = BoundedChannelFullMode.DropOldest
-        });
-
-        _capture = renderDeviceId is null
-            ? new WasapiLoopbackCapture()
-            : new WasapiLoopbackCapture(WindowsAudioDeviceEnumerator.GetById(renderDeviceId));
-
-        _converter = new CanonicalFormatConverter(_capture.WaveFormat);
-
-        _capture.DataAvailable += (_, e) =>
-        {
-            var pcm = _converter.Convert(e.Buffer, e.BytesRecorded);
-            if (pcm.Length > 0)
-                _channel.Writer.TryWrite(new AudioFrame(pcm, DateTimeOffset.UtcNow));
-        };
-        _capture.RecordingStopped += (_, _) => _channel.Writer.TryComplete();
     }
 
-    public Task StartAsync(CancellationToken ct = default)
+    private static WasapiRecorder Build(string? renderDeviceId)
     {
-        _capture.StartRecording();
-        return Task.CompletedTask;
-    }
+        var device = renderDeviceId is null
+            ? WindowsAudioDeviceEnumerator.GetDefault(DataFlow.Render)
+            : WindowsAudioDeviceEnumerator.GetById(renderDeviceId);
 
-    public Task StopAsync(CancellationToken ct = default)
-    {
-        _capture.StopRecording();
-        return Task.CompletedTask;
-    }
-
-    public ValueTask DisposeAsync()
-    {
-        _capture.Dispose();
-        return ValueTask.CompletedTask;
+        return new WasapiRecorderBuilder()
+            .WithDevice(device)
+            .WithLoopbackCapture()
+            .WithFormat(CanonicalWaveFormat)
+            .WithBufferLength(BufferLengthMs)
+            .Build();
     }
 }

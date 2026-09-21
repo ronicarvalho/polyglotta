@@ -1,6 +1,6 @@
 # PRD-001 — Dublagem simultânea em chamadas (v1 Windows)
 
-**Status:** Ativo · **Última atualização:** 2026-09-18
+**Status:** Ativo · **Última atualização:** 2026-09-21
 
 ## Problema
 
@@ -51,7 +51,7 @@ Profissional brasileiro em reunião com cliente/time nos EUA. Entra na chamada, 
 
 ## Marcos
 
-1. **M0 — Esqueleto** (este repo): interfaces, pipeline, CLI compilando.
+1. **M0 — Esqueleto** ✅ 2026-09-21: interfaces, pipeline, CLI compilando (`--list-devices` verificado; NAudio 3.x — ADR-0005).
 2. **M1 — Outbound funcional**: falar PT no mic e sair EN no VB-Cable.
 3. **M2 — Inbound funcional**: loopback traduzido no fone (atenção a eco/feedback).
 4. **M3 — Sessão completa**: dois pipelines simultâneos, mute, métricas de latência.
