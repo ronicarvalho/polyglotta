@@ -24,6 +24,15 @@ if (args.Contains("--list-devices"))
 string Arg(string name, string fallback) =>
     args.SkipWhile(a => a != name).Skip(1).FirstOrDefault() ?? fallback;
 
+foreach (var name in new[] { "AZURE_SPEECH_KEY", "AZURE_SPEECH_REGION" })
+{
+    if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable(name)))
+    {
+        log.LogError("Variável de ambiente {Name} não definida (ver README).", name);
+        return 1;
+    }
+}
+
 var fromLang = Arg("--from", "pt-BR");
 var toLang = Arg("--to", "en-US");
 var outVoice = Arg("--voice", "en-US-JennyNeural");
@@ -37,15 +46,44 @@ if (cable is null)
     return 1;
 }
 
-// Inbound playback: user's headphones. IMPORTANT: to avoid a feedback loop,
-// this must NOT be the same device captured by loopback (audio-realtime skill).
-var phonesId = Arg("--phones", "");
-var phones = phonesId.Length > 0
-    ? enumerator.ListDevices().First(d => d.Id == phonesId)
-    : enumerator.ListDevices().First(d => d.Kind == AudioDeviceKind.Render && d.IsDefault);
+var devices = enumerator.ListDevices();
+
+AudioDeviceInfo? Resolve(string option, AudioDeviceKind kind)
+{
+    var id = Arg(option, "");
+    if (id.Length == 0)
+        return devices.FirstOrDefault(d => d.Kind == kind && d.IsDefault);
+    var found = devices.FirstOrDefault(d => d.Id == id && d.Kind == kind);
+    if (found is null)
+        log.LogError("{Option} {Id}: dispositivo de {Kind} não encontrado. Use --list-devices.", option, id, kind);
+    return found;
+}
+
+// Inbound source: the render device Meet/Teams plays on (tapped via WASAPI loopback).
+var loopback = Resolve("--loopback", AudioDeviceKind.Render);
+// Inbound playback: the user's headphones.
+var phones = Resolve("--phones", AudioDeviceKind.Render);
+if (loopback is null || phones is null)
+    return 1;
+
+// Feedback guards (audio-realtime skill): the translated audio we play must never
+// be captured back by the loopback, and nothing inbound may go to the virtual mic.
+if (phones.Id == loopback.Id)
+{
+    log.LogError(
+        "O fone ({Phones}) é o mesmo dispositivo capturado por loopback. A tradução seria " +
+        "recapturada e retraduzida em loop. Faça o Meet/Teams tocar num dispositivo (--loopback) " +
+        "diferente do fone (--phones). Veja os ids em --list-devices.", phones.Name);
+    return 1;
+}
+if (phones.Id == cable.Id || loopback.Id == cable.Id)
+{
+    log.LogError("\"CABLE Input\" é reservado ao microfone virtual (outbound); não use como --phones nem --loopback.");
+    return 1;
+}
 
 log.LogInformation("Outbound: mic -> {From}->{To} -> {Cable}", fromLang, toLang, cable.Name);
-log.LogInformation("Inbound : loopback -> {To}->{From} -> {Phones}", toLang, fromLang, phones.Name);
+log.LogInformation("Inbound : loopback({Loopback}) -> {To}->{From} -> {Phones}", loopback.Name, toLang, fromLang, phones.Name);
 
 await using var outbound = new DubbingPipeline(
     "outbound",
@@ -56,7 +94,7 @@ await using var outbound = new DubbingPipeline(
 
 await using var inbound = new DubbingPipeline(
     "inbound",
-    new WasapiLoopbackSystemCapture(),
+    new WasapiLoopbackSystemCapture(loopback.Id),
     AzureSpeechTranslator.FromEnvironment(),
     new WasapiRenderDevice(phones.Id),
     loggerFactory.CreateLogger<DubbingPipeline>());

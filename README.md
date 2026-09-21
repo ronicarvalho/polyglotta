@@ -17,6 +17,16 @@ dotnet run --project src/Polyglotta.Cli -- --from pt-BR --to en-US --voice en-US
 
 No Meet/Teams, selecione **CABLE Output** como microfone.
 
+### Dispositivos e eco
+
+O pipeline inbound captura, por loopback, o dispositivo em que o Meet/Teams toca e reproduz a tradução no seu fone. Esses dois **precisam ser dispositivos diferentes** — caso contrário a tradução seria recapturada e retraduzida em loop, e o app se recusa a iniciar. Configure o Meet/Teams para tocar num dispositivo (ex.: "CABLE In 16ch" ou uma saída secundária) e aponte o CLI:
+
+```bash
+dotnet run --project src/Polyglotta.Cli -- --loopback "<id do dispositivo do Meet>" --phones "<id do seu fone>"
+```
+
+Os ids vêm de `--list-devices`. Sem `--loopback`/`--phones` o CLI usa o dispositivo de comunicação padrão para ambos, o que dispara a guarda. "CABLE Input" é reservado ao microfone virtual e não pode ser usado em nenhum dos dois.
+
 ## Desenvolvimento com Claude Code
 
 Este repositório é preparado para desenvolvimento agêntico: contexto em `CLAUDE.md`, requisitos em `docs/prd/`, decisões em `docs/adr/`, manuais de bibliotecas em `docs/man` skills do projeto em `.claude/skills/` e o comando `/new-adr` em `.claude/commands/`.

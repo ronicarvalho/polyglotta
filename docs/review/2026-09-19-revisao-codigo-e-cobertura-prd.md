@@ -4,7 +4,8 @@
 
 ## Progresso
 
-- **2026-09-21** — ADR-0005 aceito; migração para NAudio 3.x concluída. Resolvidos: **B1, B2, B3, C3, C4** (captura pede o formato canônico ao engine, `CanonicalFramer` fatia em 20 ms, default = `Role.Communications`). Novo projeto `tests/Polyglotta.Audio.Windows.Tests` com regressão do B3. M0 atingido. Pendentes: C1, C2, C5, C6, menores, docs.
+- **2026-09-21** — ADR-0005 aceito; migração para NAudio 3.x concluída. Resolvidos: **B1, B2, B3, C3, C4** (captura pede o formato canônico ao engine, `CanonicalFramer` fatia em 20 ms, default = `Role.Communications`). Novo projeto `tests/Polyglotta.Audio.Windows.Tests` com regressão do B3. M0 atingido.
+- **2026-09-21** — **C1** resolvido: CLI recusa iniciar se fone == loopback ou se "CABLE Input" for usado como fone/loopback; novo flag `--loopback`; ids inválidos e variáveis de ambiente ausentes dão erro amigável. Pendentes: C2, C5, C6, menores, docs.
 
 ## Estado verificado
 
