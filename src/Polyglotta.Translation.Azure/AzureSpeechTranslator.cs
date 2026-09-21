@@ -39,6 +39,9 @@ public sealed class AzureSpeechTranslator : ISpeechTranslator
 
     public async Task StartAsync(TranslatorOptions options, CancellationToken ct = default)
     {
+        if (_recognizer is not null)
+            throw new InvalidOperationException("Translator is already started; call StopAsync first.");
+
         var config = SpeechTranslationConfig.FromSubscription(_key, _region);
         config.SpeechRecognitionLanguage = options.SourceLanguage;
 
@@ -86,17 +89,25 @@ public sealed class AzureSpeechTranslator : ISpeechTranslator
 
     public void PushAudio(ReadOnlySpan<byte> pcm) => _push?.Write(pcm.ToArray());
 
+    /// <summary>Stops and releases the session. Idempotent; a later <see cref="StartAsync"/> opens a new one.</summary>
     public async Task StopAsync(CancellationToken ct = default)
     {
-        if (_recognizer is not null)
-            await _recognizer.StopContinuousRecognitionAsync().WaitAsync(ct);
-        _push?.Close();
+        var recognizer = Interlocked.Exchange(ref _recognizer, null);
+        var push = Interlocked.Exchange(ref _push, null);
+        if (recognizer is null)
+            return;
+
+        try
+        {
+            await recognizer.StopContinuousRecognitionAsync().WaitAsync(ct);
+        }
+        finally
+        {
+            push?.Close();
+            recognizer.Dispose();
+            push?.Dispose();
+        }
     }
 
-    public ValueTask DisposeAsync()
-    {
-        _recognizer?.Dispose();
-        _push?.Dispose();
-        return ValueTask.CompletedTask;
-    }
+    public async ValueTask DisposeAsync() => await StopAsync();
 }

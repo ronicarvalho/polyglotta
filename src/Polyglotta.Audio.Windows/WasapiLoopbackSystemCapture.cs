@@ -20,7 +20,7 @@ public sealed class WasapiLoopbackSystemCapture : WasapiRecorderCapture, ISystem
 {
     /// <param name="renderDeviceId">Render endpoint ID to tap, or null for the default communications device.</param>
     public WasapiLoopbackSystemCapture(string? renderDeviceId = null)
-        : base(Build(renderDeviceId))
+        : base(() => Build(renderDeviceId))
     {
     }
 

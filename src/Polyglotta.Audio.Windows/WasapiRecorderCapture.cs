@@ -9,6 +9,12 @@ namespace Polyglotta.Audio.Windows;
 /// Shared plumbing for WASAPI captures built on <see cref="WasapiRecorder"/> (ADR-0005):
 /// owns the bounded frame channel and the <see cref="CanonicalFramer"/>. Subclasses only
 /// decide how the recorder is built (mic vs. loopback).
+/// <para>
+/// A <see cref="WasapiRecorder"/> cannot be restarted once stopped (NAudio 3.1.0 throws
+/// "audio client is already initialized"), so every <see cref="StartAsync"/> builds a fresh
+/// one from the factory. <see cref="Frames"/> stays open across restarts and only completes
+/// on device error or dispose.
+/// </para>
 /// </summary>
 public abstract class WasapiRecorderCapture : IAudioCaptureDevice
 {
@@ -23,8 +29,11 @@ public abstract class WasapiRecorderCapture : IAudioCaptureDevice
             SingleWriter = true
         });
 
-    private readonly WasapiRecorder _recorder;
-    private readonly CanonicalFramer _framer;
+    private readonly Func<WasapiRecorder> _factory;
+    private WasapiRecorder _recorder;
+    private CanonicalFramer _framer;
+    private bool _recorderUsed;
+    private bool _disposed;
 
     public ChannelReader<AudioFrame> Frames => _channel.Reader;
 
@@ -35,24 +44,47 @@ public abstract class WasapiRecorderCapture : IAudioCaptureDevice
     /// <summary>True when WASAPI delivers the canonical format and no resampling runs in-process.</summary>
     public bool IsNativeCanonical => _framer.IsPassThrough;
 
-    private protected WasapiRecorderCapture(WasapiRecorder recorder)
+    private protected WasapiRecorderCapture(Func<WasapiRecorder> factory)
     {
-        _recorder = recorder;
-        _framer = new CanonicalFramer(recorder.WaveFormat);
+        _factory = factory;
+        (_recorder, _framer) = Attach(factory());
+    }
 
+    private (WasapiRecorder, CanonicalFramer) Attach(WasapiRecorder recorder)
+    {
+        var framer = new CanonicalFramer(recorder.WaveFormat);
         // Audio thread: convert + enqueue only. TryWrite never blocks (DropOldest).
-        _recorder.DataAvailable += OnDataAvailable;
-        _recorder.RecordingStopped += (_, e) => _channel.Writer.TryComplete(e.Exception);
+        recorder.DataAvailable += OnDataAvailable;
+        recorder.RecordingStopped += OnRecordingStopped;
+        return (recorder, framer);
     }
 
     private void OnDataAvailable(ReadOnlySpan<byte> buffer, AudioClientBufferFlags flags, long devicePosition, long qpcPosition)
         => _framer.Feed(buffer, _channel.Writer, DateTimeOffset.UtcNow);
 
-    public Task StartAsync(CancellationToken ct = default)
+    private void OnRecordingStopped(object? sender, StoppedEventArgs e)
+    {
+        // A normal stop keeps the channel open for a later restart; a device error ends it
+        // so the pipeline pump observes the failure.
+        if (e.Exception is not null)
+            _channel.Writer.TryComplete(e.Exception);
+    }
+
+    public async Task StartAsync(CancellationToken ct = default)
     {
         ct.ThrowIfCancellationRequested();
+        ObjectDisposedException.ThrowIf(_disposed, this);
+
+        if (_recorder.CaptureState != CaptureState.Stopped)
+            return;
+
+        if (_recorderUsed) // single-use: rebuild before the second start
+        {
+            await DetachAndDisposeAsync(_recorder);
+            (_recorder, _framer) = Attach(_factory());
+        }
         _recorder.StartRecording();
-        return Task.CompletedTask;
+        _recorderUsed = true;
     }
 
     public Task StopAsync(CancellationToken ct = default)
@@ -62,10 +94,19 @@ public abstract class WasapiRecorderCapture : IAudioCaptureDevice
         return Task.CompletedTask;
     }
 
+    private async ValueTask DetachAndDisposeAsync(WasapiRecorder recorder)
+    {
+        recorder.DataAvailable -= OnDataAvailable;
+        recorder.RecordingStopped -= OnRecordingStopped;
+        await recorder.DisposeAsync();
+    }
+
     public async ValueTask DisposeAsync()
     {
-        _recorder.DataAvailable -= OnDataAvailable;
-        await _recorder.DisposeAsync();
+        if (_disposed)
+            return;
+        _disposed = true;
+        await DetachAndDisposeAsync(_recorder);
         _channel.Writer.TryComplete();
     }
 

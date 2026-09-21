@@ -38,7 +38,7 @@ Profissional brasileiro em reunião com cliente/time nos EUA. Entra na chamada, 
 
 ## Requisitos não funcionais
 
-- **Latência:** ≤ 3 s do fim da frase à síntese (p95). Medir e logar.
+- **Latência:** ≤ 3 s do fim da frase à síntese (p95). Medir e logar. *Medição (2026-09-21): `LatencyTracker` no Core — último frame com voz (RMS > limiar) no instante do transcript final → primeiro chunk sintetizado; log por frase com p95 acumulado e resumo no encerramento do CLI.*
 - **Estabilidade:** 60 min de chamada sem vazamento de memória ou drift de buffer.
 - **CPU:** processamento local leve (o trabalho pesado é na nuvem).
 - **Segurança:** chaves só via variável de ambiente; nenhum áudio persistido por padrão.

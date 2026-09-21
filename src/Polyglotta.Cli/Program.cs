@@ -102,14 +102,20 @@ await using var inbound = new DubbingPipeline(
 using var cts = new CancellationTokenSource();
 Console.CancelKeyPress += (_, e) => { e.Cancel = true; cts.Cancel(); };
 
+// RF-07 (auto-reconnect) is not implemented yet: a faulted stage ends the session.
+var faulted = false;
+foreach (var p in new[] { outbound, inbound })
+    p.Faulted += (_, _) => { faulted = true; cts.Cancel(); };
+
 await outbound.StartAsync(new TranslatorOptions(fromLang, toLang, outVoice), cts.Token);
 await inbound.StartAsync(new TranslatorOptions(toLang, fromLang, inVoice), cts.Token);
 
 log.LogInformation("Rodando. No Meet/Teams selecione \"CABLE Output\" como microfone. [M] mute outbound, Ctrl+C sai.");
 
+var interactive = !Console.IsInputRedirected;
 while (!cts.IsCancellationRequested)
 {
-    if (Console.KeyAvailable && Console.ReadKey(intercept: true).Key == ConsoleKey.M)
+    if (interactive && Console.KeyAvailable && Console.ReadKey(intercept: true).Key == ConsoleKey.M)
     {
         outbound.Muted = !outbound.Muted;
         log.LogInformation("Outbound {State}", outbound.Muted ? "MUTED" : "ativo");
@@ -119,4 +125,14 @@ while (!cts.IsCancellationRequested)
 
 await outbound.StopAsync();
 await inbound.StopAsync();
-return 0;
+
+foreach (var p in new[] { outbound, inbound })
+{
+    if (p.Latency.Count > 0)
+        log.LogInformation("[{Pipeline}] latência: n={Count} última={Last:F2}s p95={P95:F2}s (meta ≤ 3 s)",
+            p.Name, p.Latency.Count, p.Latency.Last!.Value.TotalSeconds, p.Latency.P95!.Value.TotalSeconds);
+    else
+        log.LogInformation("[{Pipeline}] latência: nenhuma frase completa medida", p.Name);
+}
+
+return faulted ? 2 : 0;

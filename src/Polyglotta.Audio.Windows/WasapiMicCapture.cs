@@ -8,7 +8,7 @@ public sealed class WasapiMicCapture : WasapiRecorderCapture
 {
     /// <param name="deviceId">Capture endpoint ID, or null for the default communications device.</param>
     public WasapiMicCapture(string? deviceId = null)
-        : base(Build(deviceId))
+        : base(() => Build(deviceId))
     {
     }
 
