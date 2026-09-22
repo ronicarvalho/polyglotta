@@ -1,4 +1,4 @@
-# Realtime Dubbing
+# Polyglotta — Realtime Dubbing
 
 Dublagem simultânea PT↔EN para chamadas no Meet/Teams. Você fala português, o outro lado ouve inglês sintetizado — e vice-versa.
 

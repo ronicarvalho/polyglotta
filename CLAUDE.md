@@ -1,8 +1,8 @@
-# CLAUDE.md — Realtime Dubbing
+# CLAUDE.md — Polyglotta (Realtime Dubbing)
 
 App de dublagem simultânea para chamadas (Meet/Teams): o usuário fala PT-BR e o interlocutor ouve EN sintetizado, e vice-versa. Windows primeiro (v1), Mac e Linux depois.
 
-## Como funciona (visão de 30 segundos
+## Como funciona (visão de 30 segundos)
 
 Dois pipelines simultâneos e independentes:
 
@@ -14,7 +14,7 @@ Latência alvo: 1,5–3s ponta a ponta ("tradução consecutiva rápida", não i
 ## Stack e decisões já tomadas
 
 - **C# / .NET 9**. Não sugerir Rust/Go/C++ — decidido em ADR-0001.
-- **NAudio** para WASAPI (captura, loopback, render) — ADR-0004.
+- **NAudio 3.x** para WASAPI (captura, loopback, render) — ADR-0004; API de builders (`WasapiRecorderBuilder`/`WasapiPlayerBuilder`), classes 2.x obsoletas são erro de build — ADR-0005.
 - **VB-Cable** como microfone virtual na v1; NÃO escrever driver de áudio — ADR-0002.
 - **Azure Speech Translation** (speech-to-speech streaming) como provedor v1 — ADR-0003.
 - Toda a lógica portável fica em `Polyglotta.Core` atrás de interfaces; código de plataforma isolado em `Polyglotta.Audio.Windows` — ADR-0004.
@@ -31,6 +31,8 @@ src/Polyglotta.Audio.Windows/       WASAPI/NAudio: mic, loopback, render no VB-C
 src/Polyglotta.Translation.Azure/   Azure Speech SDK (TranslationRecognizer + síntese)
 src/Polyglotta.Cli/                 v0: console app que liga os dois pipelines
 tests/Polyglotta.Core.Tests/        xUnit
+tests/Polyglotta.Audio.Windows.Tests/  xUnit — só lógica pura (CanonicalFramer); I/O de dispositivo é teste manual
+docs/review/     Revisões de código e status de cobertura do PRD
 ```
 
 ## Comandos
@@ -55,7 +57,7 @@ Variáveis de ambiente necessárias em runtime: `AZURE_SPEECH_KEY`, `AZURE_SPEEC
 - C# 14, nullable habilitado, `var` quando o tipo é óbvio.
 - Async de ponta a ponta; `CancellationToken` em toda API pública assíncrona.
 - Nomes de código em inglês; docs (PRD/ADR/comentários de contexto) em PT-BR.
-- Um teste novo para cada comportamento novo no Core. Código de plataforma (WASAPI) é testado manualmente — documente o roteiro de teste no PR.
+- Um teste novo para cada comportamento novo no Core. Código de plataforma (WASAPI) é testado manualmente — documente o roteiro de teste no PR. Para checar uma API do NAudio antes de codificar, faça um probe descartável no scratchpad (funcionou bem: `WithFormat`, loopback, restart).
 
 ## Workflow com o agente
 

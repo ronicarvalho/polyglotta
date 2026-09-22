@@ -7,6 +7,8 @@
 - **2026-09-21** — ADR-0005 aceito; migração para NAudio 3.x concluída. Resolvidos: **B1, B2, B3, C3, C4** (captura pede o formato canônico ao engine, `CanonicalFramer` fatia em 20 ms, default = `Role.Communications`). Novo projeto `tests/Polyglotta.Audio.Windows.Tests` com regressão do B3. M0 atingido.
 - **2026-09-21** — **C1** resolvido: CLI recusa iniciar se fone == loopback ou se "CABLE Input" for usado como fone/loopback; novo flag `--loopback`; ids inválidos e variáveis de ambiente ausentes dão erro amigável. Pendentes: C2, C5, C6, menores, docs.
 - **2026-09-21** — **C2, C5, C6** resolvidos no Core: `LatencyTracker` (fim da frase → primeira síntese, p95 nearest-rank); `DubbingPipeline` com handlers assinados uma vez, `StopAsync(ct)` idempotente que tenta todos os estágios (AggregateException), restart permitido, `Faulted` exposto (CLI encerra com código 2); `WasapiRecorderCapture` reconstrói o recorder a cada start (NAudio 3.1.0 não reinicia um `WasapiRecorder`) e só fecha o channel em erro; `AzureSpeechTranslator` Stop idempotente sem vazar recognizer. 20 testes no Core (+16). Pendentes: menores (Task.Delay em teste, M.E.Logging 10.x), docs (`Dubbing.*`, ADR-0001 filename), RF-07.
+- **2026-09-21** — docs: ADR-0004 com nomes `Polyglotta.*`, ADR-0001 renomeado para `…dotnet9.md`, nome do produto unificado. Itens menores restantes: `PushAudio` faz `ToArray()` porque o SDK Azure só aceita `byte[]` (não há o que fazer); pacotes M.E.Logging 10.x em net9.0 funcionam, mantidos. **Restante: RF-07 (reconexão) e teste M1 com Azure.**
+- **Ponto de parada 2026-09-21** — aguardando chaves do Azure para o teste M1 (roteiro: `--list-devices` → `--loopback "<id Meet>" --phones "<id fone>"` → falar PT → observar `final:` e `latency` → Ctrl+C mostra p95). Depois: RF-07 como supervisor acima do `DubbingPipeline` (em `Faulted`: Stop → backoff → Start, com limite de tentativas), atualizando RF-07 no PRD no mesmo commit.
 
 ## Estado verificado
 
@@ -58,7 +60,7 @@ Caminhos: fixar `NAudio 2.2.1` ou migrar para 3.x. **Recomendação: migrar para
 
 - `ADR-0001-linguagem-csharp-dotnet8.md` — nome diz .NET 8, conteúdo diz .NET 9.
 - ADR-0004 e skill `audio-realtime` referem `Dubbing.Core` / `Dubbing.Audio.*`; projetos reais são `Polyglotta.*`.
-- README chama o produto "Realtime Dubbing" e cita `.claude/commands/` para `/new-adr` (é skill).
+- README chama o produto "Realtime Dubbing" enquanto solução/projetos são `Polyglotta` (unificado em 2026-09-21). ~~Cita `.claude/commands/` para `/new-adr`~~ — correto, o comando existe lá; erro da revisão.
 
 ## Cobertura do PRD-001
 

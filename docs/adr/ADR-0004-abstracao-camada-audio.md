@@ -8,7 +8,9 @@ Alvos: Windows (v1), depois Mac e Linux. Cada plataforma tem API (WASAPI, CoreAu
 
 ## Decisão
 
-`Dubbing.Core` define `IAudioCaptureDevice`, `IAudioRenderDevice`, `ISystemAudioCapture` (loopback) e `IAudioDeviceEnumerator`, e não referencia nenhuma biblioteca de plataforma. Implementações vivem em projetos por plataforma (`Dubbing.Audio.Windows` com NAudio; futuros `Dubbing.Audio.Mac` e `Dubbing.Audio.Linux`).
+`Polyglotta.Core` define `IAudioCaptureDevice`, `IAudioRenderDevice`, `ISystemAudioCapture` (loopback) e `IAudioDeviceEnumerator`, e não referencia nenhuma biblioteca de plataforma. Implementações vivem em projetos por plataforma (`Polyglotta.Audio.Windows` com NAudio — versão fixada no ADR-0005; futuros `Polyglotta.Audio.Mac` e `Polyglotta.Audio.Linux`).
+
+*Nota editorial (2026-09-21): os projetos foram nomeados `Polyglotta.*`; o texto original dizia `Dubbing.*`. Apenas os nomes foram atualizados — a decisão é a mesma.*
 
 ## Alternativas consideradas
 
