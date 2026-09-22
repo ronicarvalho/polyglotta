@@ -47,8 +47,10 @@ var toLang = Arg("--to", "en-US");
 
 // --voice/--voice-in aceitam "male"/"female" ou o nome completo da voz Azure.
 // O padrão é voz HD (bem mais natural que as neurais de 1a geração).
-var outVoice = AzureVoices.Resolve(Arg("--voice", "female"), toLang);
-var inVoice = AzureVoices.Resolve(Arg("--voice-in", "female"), fromLang);
+var voiceKey = checkAudio ? "" : EnvironmentSettings.Require("AZURE_SPEECH_KEY");
+var voiceRegion = checkAudio ? "" : EnvironmentSettings.Require("AZURE_SPEECH_REGION");
+var outVoice = checkAudio ? null : await AzureVoices.ResolveAsync(Arg("--voice", "female"), toLang, voiceKey, voiceRegion);
+var inVoice = checkAudio ? null : await AzureVoices.ResolveAsync(Arg("--voice-in", "female"), fromLang, voiceKey, voiceRegion);
 
 if (args.Contains("--list-voices"))
 {
@@ -57,9 +59,7 @@ if (args.Contains("--list-voices"))
     foreach (var locale in wanted)
     {
         Console.WriteLine($"\n=== {locale}");
-        foreach (var v in await AzureVoices.ListAsync(
-                     EnvironmentSettings.Require("AZURE_SPEECH_KEY"),
-                     EnvironmentSettings.Require("AZURE_SPEECH_REGION"), locale))
+        foreach (var v in await AzureVoices.ListAsync(voiceKey, voiceRegion, locale))
             Console.WriteLine($"  {(v.IsHighDefinition ? "HD" : "  ")} {v.Gender,-7} {v.ShortName}");
     }
     Console.WriteLine("\nUse o nome em --voice (idioma de saída) ou --voice-in (idioma de entrada).");

@@ -56,7 +56,7 @@ Se o trecho casar com mais de um dispositivo, o app lista os candidatos e pede a
 dotnet run --project src/Polyglotta.Cli -- --voice male --voice-in feminina ...
 ```
 
-O padrão é voz **HD** (famílias `DragonHD` e `DragonHDOmni`), bem mais natural que as vozes neurais de primeira geração como `JennyNeural` e `FranciscaNeural`. Para ver o que o seu recurso oferece:
+Com apelido de gênero, a voz é escolhida **consultando o catálogo do seu próprio recurso**, preferindo vozes **HD** (famílias `DragonHD`), que são bem mais naturais que as neurais de primeira geração como `JennyNeural` e `FranciscaNeural`. Consultar em vez de manter uma lista fixa evita nomes inventados: a documentação da Microsoft lista as vozes HD de forma incompleta e a disponibilidade varia por região e recurso. Para ver o que o seu recurso oferece:
 
 ```bash
 dotnet run --project src/Polyglotta.Cli -- --list-voices          # locais de origem e destino
