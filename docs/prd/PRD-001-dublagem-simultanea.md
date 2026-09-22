@@ -1,6 +1,6 @@
 # PRD-001 — Dublagem simultânea em chamadas (v1 Windows)
 
-**Status:** Ativo · **Última atualização:** 2026-09-21
+**Status:** Ativo · **Última atualização:** 2026-09-22
 
 ## Problema
 
@@ -38,7 +38,7 @@ Profissional brasileiro em reunião com cliente/time nos EUA. Entra na chamada, 
 
 ## Requisitos não funcionais
 
-- **Latência:** ≤ 3 s do fim da frase à síntese (p95). Medir e logar. *Medição (2026-09-21): `LatencyTracker` no Core — último frame com voz (RMS > limiar) no instante do transcript final → primeiro chunk sintetizado; log por frase com p95 acumulado e resumo no encerramento do CLI.*
+- **Latência:** ≤ 3 s do fim da frase à síntese (p95). Medir e logar. *Medição (2026-09-21): `LatencyTracker` no Core — último frame com voz (RMS > limiar) no instante do transcript final → primeiro chunk sintetizado; log por frase com p95 acumulado e resumo no encerramento do CLI.* **Primeira medição real (2026-09-22, outbound, n=6): p95 1,46 s — dentro da meta.**
 - **Estabilidade:** 60 min de chamada sem vazamento de memória ou drift de buffer.
 - **CPU:** processamento local leve (o trabalho pesado é na nuvem).
 - **Segurança:** chaves só via variável de ambiente; nenhum áudio persistido por padrão.
@@ -52,7 +52,7 @@ Profissional brasileiro em reunião com cliente/time nos EUA. Entra na chamada, 
 ## Marcos
 
 1. **M0 — Esqueleto** ✅ 2026-09-21: interfaces, pipeline, CLI compilando (`--list-devices` verificado; NAudio 3.x — ADR-0005).
-2. **M1 — Outbound funcional**: falar PT no mic e sair EN no VB-Cable.
+2. **M1 — Outbound funcional** ✅ 2026-09-22: falar PT no mic e sair EN no VB-Cable. Verificado com Azure real (`eastus`): 6 frases PT→EN, latência 0,85–1,46 s, **p95 1,46 s**.
 3. **M2 — Inbound funcional**: loopback traduzido no fone (atenção a eco/feedback).
 4. **M3 — Sessão completa**: dois pipelines simultâneos, mute, métricas de latência.
 5. **M4 — UI mínima** (WinUI/Avalonia — exigirá ADR).

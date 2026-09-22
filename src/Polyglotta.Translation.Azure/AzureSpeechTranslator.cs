@@ -1,4 +1,5 @@
 using Polyglotta.Core.Audio;
+using Polyglotta.Core.Configuration;
 using Polyglotta.Core.Translation;
 using Microsoft.CognitiveServices.Speech;
 using Microsoft.CognitiveServices.Speech.Audio;
@@ -28,14 +29,9 @@ public sealed class AzureSpeechTranslator : ISpeechTranslator
         _region = region;
     }
 
-    public static AzureSpeechTranslator FromEnvironment()
-    {
-        var key = Environment.GetEnvironmentVariable("AZURE_SPEECH_KEY")
-                  ?? throw new InvalidOperationException("AZURE_SPEECH_KEY not set");
-        var region = Environment.GetEnvironmentVariable("AZURE_SPEECH_REGION")
-                  ?? throw new InvalidOperationException("AZURE_SPEECH_REGION not set");
-        return new AzureSpeechTranslator(key, region);
-    }
+    public static AzureSpeechTranslator FromEnvironment() =>
+        new(EnvironmentSettings.Require("AZURE_SPEECH_KEY"),
+            EnvironmentSettings.Require("AZURE_SPEECH_REGION"));
 
     public async Task StartAsync(TranslatorOptions options, CancellationToken ct = default)
     {

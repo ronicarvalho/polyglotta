@@ -31,6 +31,9 @@ public sealed class DubbingPipeline : IAsyncDisposable
     /// <summary>End-of-phrase → first synthesized audio (PRD-001 RNF latência).</summary>
     public LatencyTracker Latency { get; } = new();
 
+    /// <summary>Periodic capture-level reports, so a dead or muted input is visible in the log.</summary>
+    public AudioLevelMeter Levels { get; } = new();
+
     /// <summary>
     /// Raised when a stage fails while running (translator error, capture device gone).
     /// The pipeline does not recover by itself — RF-07 reconnection lives above this class.
@@ -85,6 +88,12 @@ public sealed class DubbingPipeline : IAsyncDisposable
         {
             await foreach (var frame in _capture.Frames.ReadAllAsync(ct))
             {
+                // Metered before the mute check: a muted pipeline should still show
+                // whether the device is alive.
+                Levels.Add(frame);
+                if (Levels.TryReport() is { } level)
+                    LogLevel(level);
+
                 if (Muted) continue;
                 Latency.OnFrame(frame);
                 _translator.PushAudio(frame.Pcm);
@@ -145,8 +154,27 @@ public sealed class DubbingPipeline : IAsyncDisposable
         }
     }
 
+    private void LogLevel(AudioLevelReport level)
+    {
+        if (level.LooksSilent)
+            _log.LogWarning(
+                "[{Pipeline}] entrada sem sinal: {Frames} frames em {Window:F0}s, pico {Peak:P1} do máximo. " +
+                "Dispositivo desconectado, mudo ou sem nada tocando?",
+                Name, level.Frames, level.Window.TotalSeconds, level.PeakScale);
+        else
+            _log.LogDebug("[{Pipeline}] entrada: {Frames} frames, {Voiced} com voz, pico {Peak:P1}",
+                Name, level.Frames, level.VoicedFrames, level.PeakScale);
+    }
+
     private void OnTranscript(object? _, TranscriptEvent e)
     {
+        if (string.IsNullOrWhiteSpace(e.SourceText))
+        {
+            // The provider segmented the stream but found no speech in it.
+            _log.LogDebug("[{Pipeline}] segmento sem fala reconhecida", Name);
+            return;
+        }
+
         _log.LogInformation("[{Pipeline}] {Kind}: \"{Src}\" -> \"{Dst}\"",
             Name, e.IsFinal ? "final" : "partial", e.SourceText, e.TranslatedText);
         if (e.IsFinal)
