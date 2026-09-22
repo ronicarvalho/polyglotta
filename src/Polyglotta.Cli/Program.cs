@@ -44,8 +44,27 @@ if (!checkAudio)
 
 var fromLang = Arg("--from", "pt-BR");
 var toLang = Arg("--to", "en-US");
-var outVoice = Arg("--voice", "en-US-JennyNeural");
-var inVoice = Arg("--voice-in", "pt-BR-FranciscaNeural");
+
+// --voice/--voice-in aceitam "male"/"female" ou o nome completo da voz Azure.
+// O padrão é voz HD (bem mais natural que as neurais de 1a geração).
+var outVoice = AzureVoices.Resolve(Arg("--voice", "female"), toLang);
+var inVoice = AzureVoices.Resolve(Arg("--voice-in", "female"), fromLang);
+
+if (args.Contains("--list-voices"))
+{
+    var filter = Arg("--list-voices", "");
+    var wanted = filter.Length > 0 ? new[] { filter } : new[] { fromLang, toLang };
+    foreach (var locale in wanted)
+    {
+        Console.WriteLine($"\n=== {locale}");
+        foreach (var v in await AzureVoices.ListAsync(
+                     EnvironmentSettings.Require("AZURE_SPEECH_KEY"),
+                     EnvironmentSettings.Require("AZURE_SPEECH_REGION"), locale))
+            Console.WriteLine($"  {(v.IsHighDefinition ? "HD" : "  ")} {v.Gender,-7} {v.ShortName}");
+    }
+    Console.WriteLine("\nUse o nome em --voice (idioma de saída) ou --voice-in (idioma de entrada).");
+    return 0;
+}
 
 // Outbound render target: the VB-Cable virtual mic input (ADR-0002).
 var cable = enumerator.FindByName("CABLE Input", AudioDeviceKind.Render);
@@ -121,8 +140,8 @@ if (mic.Name.Contains("CABLE Output", StringComparison.OrdinalIgnoreCase))
 if (checkAudio)
     return await CheckAudioAsync();
 
-log.LogInformation("Outbound: {Mic} -> {From}->{To} -> {Cable}", mic.Name, fromLang, toLang, cable.Name);
-log.LogInformation("Inbound : loopback({Loopback}) -> {To}->{From} -> {Phones}", loopback.Name, toLang, fromLang, phones.Name);
+log.LogInformation("Outbound: {Mic} -> {From}->{To} ({Voice}) -> {Cable}", mic.Name, fromLang, toLang, outVoice ?? "voz padrão", cable.Name);
+log.LogInformation("Inbound : loopback({Loopback}) -> {To}->{From} ({Voice}) -> {Phones}", loopback.Name, toLang, fromLang, inVoice ?? "voz padrão", phones.Name);
 
 await using var outbound = new DubbingPipeline(
     "outbound",

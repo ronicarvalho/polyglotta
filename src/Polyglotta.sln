@@ -15,6 +15,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Polyglotta.Core.Tests", "..
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Polyglotta.Audio.Windows.Tests", "..\tests\Polyglotta.Audio.Windows.Tests\Polyglotta.Audio.Windows.Tests.csproj", "{0A5B4119-216B-4CFF-BAF9-B1CB0B7A6D07}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Polyglotta.Translation.Azure.Tests", "..\tests\Polyglotta.Translation.Azure.Tests\Polyglotta.Translation.Azure.Tests.csproj", "{567C356D-15C5-48CF-A5C1-695AE98EDFA9}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -97,6 +99,18 @@ Global
 		{0A5B4119-216B-4CFF-BAF9-B1CB0B7A6D07}.Release|x64.Build.0 = Release|Any CPU
 		{0A5B4119-216B-4CFF-BAF9-B1CB0B7A6D07}.Release|x86.ActiveCfg = Release|Any CPU
 		{0A5B4119-216B-4CFF-BAF9-B1CB0B7A6D07}.Release|x86.Build.0 = Release|Any CPU
+		{567C356D-15C5-48CF-A5C1-695AE98EDFA9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{567C356D-15C5-48CF-A5C1-695AE98EDFA9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{567C356D-15C5-48CF-A5C1-695AE98EDFA9}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{567C356D-15C5-48CF-A5C1-695AE98EDFA9}.Debug|x64.Build.0 = Debug|Any CPU
+		{567C356D-15C5-48CF-A5C1-695AE98EDFA9}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{567C356D-15C5-48CF-A5C1-695AE98EDFA9}.Debug|x86.Build.0 = Debug|Any CPU
+		{567C356D-15C5-48CF-A5C1-695AE98EDFA9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{567C356D-15C5-48CF-A5C1-695AE98EDFA9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{567C356D-15C5-48CF-A5C1-695AE98EDFA9}.Release|x64.ActiveCfg = Release|Any CPU
+		{567C356D-15C5-48CF-A5C1-695AE98EDFA9}.Release|x64.Build.0 = Release|Any CPU
+		{567C356D-15C5-48CF-A5C1-695AE98EDFA9}.Release|x86.ActiveCfg = Release|Any CPU
+		{567C356D-15C5-48CF-A5C1-695AE98EDFA9}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

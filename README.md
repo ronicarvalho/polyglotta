@@ -48,6 +48,23 @@ Se o trecho casar com mais de um dispositivo, o app lista os candidatos e pede a
 
 > Dispositivos **desabilitados** no Windows não aparecem em `--list-devices` e não podem ser usados. Se o seu microfone sumiu da lista, abra `mmsys.cpl` → aba Gravação → botão direito → *Mostrar dispositivos desativados* → Ativar. Sem `--loopback`/`--phones` o CLI usa o dispositivo de comunicação padrão para ambos, o que dispara a guarda. "CABLE Input" é reservado ao microfone virtual e não pode ser usado em nenhum dos dois, assim como "CABLE Output" não pode ser o `--mic`.
 
+### Escolhendo a voz
+
+`--voice` define a voz que o outro lado ouve (idioma de saída) e `--voice-in` a que você ouve (idioma de entrada). Ambas aceitam `female`/`male` (ou `feminina`/`masculina`) e também o nome completo de uma voz Azure:
+
+```bash
+dotnet run --project src/Polyglotta.Cli -- --voice male --voice-in feminina ...
+```
+
+O padrão é voz **HD** (famílias `DragonHD` e `DragonHDOmni`), bem mais natural que as vozes neurais de primeira geração como `JennyNeural` e `FranciscaNeural`. Para ver o que o seu recurso oferece:
+
+```bash
+dotnet run --project src/Polyglotta.Cli -- --list-voices          # locais de origem e destino
+dotnet run --project src/Polyglotta.Cli -- --list-voices pt-BR    # um locale específico
+```
+
+Vozes marcadas com `HD` na listagem são as de alta definição. O plano gratuito (F0) **não** reduz a qualidade da voz — ele limita volume de caracteres e concorrência.
+
 ### Testando os dispositivos sem gastar Azure
 
 ```bash
