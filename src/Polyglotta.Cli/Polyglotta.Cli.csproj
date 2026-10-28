@@ -11,5 +11,6 @@
     <ProjectReference Include="..\Polyglotta.Core\Polyglotta.Core.csproj" />
     <ProjectReference Include="..\Polyglotta.Audio.Windows\Polyglotta.Audio.Windows.csproj" />
     <ProjectReference Include="..\Polyglotta.Translation.Azure\Polyglotta.Translation.Azure.csproj" />
+    <ProjectReference Include="..\Polyglotta.Translation.Gemini\Polyglotta.Translation.Gemini.csproj" />
   </ItemGroup>
 </Project>

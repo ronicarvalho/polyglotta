@@ -4,6 +4,7 @@ using Polyglotta.Core.Configuration;
 using Polyglotta.Core.Pipeline;
 using Polyglotta.Core.Translation;
 using Polyglotta.Translation.Azure;
+using Polyglotta.Translation.Gemini;
 using Microsoft.Extensions.Logging;
 
 var loggerFactory = LoggerFactory.Create(b => b.AddSimpleConsole(o =>
@@ -28,9 +29,24 @@ string Arg(string name, string fallback) =>
 // Device check mode needs no cloud credentials.
 var checkAudio = args.Contains("--check-audio");
 
+// ADR-0006: Azure (padrão) ou Gemini Live em modo tradução.
+var provider = Arg("--provider", "azure").Trim().ToLowerInvariant();
+if (provider is not ("azure" or "gemini"))
+{
+    log.LogError("--provider \"{Provider}\": use \"azure\" ou \"gemini\".", provider);
+    return 1;
+}
+var useAzure = provider == "azure";
+
 if (!checkAudio)
 {
-    foreach (var name in new[] { "AZURE_SPEECH_KEY", "AZURE_SPEECH_REGION" })
+    var required = useAzure
+        ? new[] { "AZURE_SPEECH_KEY", "AZURE_SPEECH_REGION" }
+        : EnvironmentSettings.Read("GEMINI_API_KEY") is not null
+            ? ["GEMINI_API_KEY"]
+            : new[] { "GOOGLE_CLOUD_PROJECT", "GOOGLE_CLOUD_LOCATION" };
+
+    foreach (var name in required)
     {
         if (EnvironmentSettings.Read(name) is null)
         {
@@ -39,7 +55,11 @@ if (!checkAudio)
         }
     }
 
-    log.LogInformation("Azure region: {Region}", EnvironmentSettings.Require("AZURE_SPEECH_REGION"));
+    if (useAzure)
+        log.LogInformation("Provedor: Azure (região {Region})", EnvironmentSettings.Require("AZURE_SPEECH_REGION"));
+    else
+        log.LogInformation("Provedor: Gemini Live tradução (modelo {Model})",
+            EnvironmentSettings.Read("GEMINI_LIVE_MODEL") ?? GeminiSpeechTranslator.DefaultModel);
 }
 
 var fromLang = Arg("--from", "pt-BR");
@@ -47,10 +67,15 @@ var toLang = Arg("--to", "en-US");
 
 // --voice/--voice-in aceitam "male"/"female" ou o nome completo da voz Azure.
 // O padrão é voz HD (bem mais natural que as neurais de 1a geração).
-var voiceKey = checkAudio ? "" : EnvironmentSettings.Require("AZURE_SPEECH_KEY");
-var voiceRegion = checkAudio ? "" : EnvironmentSettings.Require("AZURE_SPEECH_REGION");
-var outVoice = checkAudio ? null : await AzureVoices.ResolveAsync(Arg("--voice", "female"), toLang, voiceKey, voiceRegion);
-var inVoice = checkAudio ? null : await AzureVoices.ResolveAsync(Arg("--voice-in", "female"), fromLang, voiceKey, voiceRegion);
+var resolveVoices = !checkAudio && useAzure;
+var voiceKey = resolveVoices ? EnvironmentSettings.Require("AZURE_SPEECH_KEY") : "";
+var voiceRegion = resolveVoices ? EnvironmentSettings.Require("AZURE_SPEECH_REGION") : "";
+var outVoice = resolveVoices ? await AzureVoices.ResolveAsync(Arg("--voice", "female"), toLang, voiceKey, voiceRegion) : null;
+var inVoice = resolveVoices ? await AzureVoices.ResolveAsync(Arg("--voice-in", "female"), fromLang, voiceKey, voiceRegion) : null;
+
+// O modo de tradução do Gemini não permite escolher a voz (ADR-0006).
+if (!useAzure && !checkAudio && (args.Contains("--voice") || args.Contains("--voice-in")))
+    log.LogWarning("--voice/--voice-in são ignorados com --provider gemini: o modo de tradução não permite escolher a voz.");
 
 if (args.Contains("--list-voices"))
 {
@@ -137,6 +162,10 @@ if (mic.Name.Contains("CABLE Output", StringComparison.OrdinalIgnoreCase))
     return 1;
 }
 
+ISpeechTranslator CreateTranslator() => useAzure
+    ? AzureSpeechTranslator.FromEnvironment()
+    : GeminiSpeechTranslator.FromEnvironment();
+
 if (checkAudio)
     return await CheckAudioAsync();
 
@@ -146,14 +175,14 @@ log.LogInformation("Inbound : loopback({Loopback}) -> {To}->{From} ({Voice}) -> 
 await using var outbound = new DubbingPipeline(
     "outbound",
     new WasapiMicCapture(mic.Id),
-    AzureSpeechTranslator.FromEnvironment(),
+    CreateTranslator(),
     new WasapiRenderDevice(cable.Id),
     loggerFactory.CreateLogger<DubbingPipeline>());
 
 await using var inbound = new DubbingPipeline(
     "inbound",
     new WasapiLoopbackSystemCapture(loopback.Id),
-    AzureSpeechTranslator.FromEnvironment(),
+    CreateTranslator(),
     new WasapiRenderDevice(phones.Id),
     loggerFactory.CreateLogger<DubbingPipeline>());
 

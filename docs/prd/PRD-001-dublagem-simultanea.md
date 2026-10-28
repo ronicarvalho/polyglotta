@@ -1,6 +1,6 @@
 # PRD-001 — Dublagem simultânea em chamadas (v1 Windows)
 
-**Status:** Ativo · **Última atualização:** 2026-09-22
+**Status:** Ativo · **Última atualização:** 2026-10-18
 
 ## Problema
 
@@ -31,7 +31,7 @@ Profissional brasileiro em reunião com cliente/time nos EUA. Entra na chamada, 
 | RF-01 | Listar dispositivos de captura e reprodução do sistema |
 | RF-02 | Pipeline outbound: mic → tradução → mic virtual |
 | RF-03 | Pipeline inbound: loopback → tradução → fone |
-| RF-04 | Seleção de par de idiomas (mín. pt-BR↔en-US) e voz TTS |
+| RF-04 | Seleção de par de idiomas (mín. pt-BR↔en-US) e voz TTS. *Com o provedor Gemini (ADR-0006) a voz não é selecionável — limitação do modo de tradução, registrada para decisão após a comparação.* |
 | RF-05 | Mute do pipeline outbound (falar sem traduzir) |
 | RF-06 | Exibir transcrição parcial/final e tradução em tempo real (log na v0) |
 | RF-07 | Reconexão automática do serviço de tradução em caso de queda |

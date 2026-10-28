@@ -6,7 +6,7 @@ Dublagem simultânea PT↔EN para chamadas no Meet/Teams. Você fala português,
 
 1. .NET 9 SDK
 2. [VB-Cable](https://vb-audio.com/Cable/) instalado (cria o microfone virtual "CABLE Input")
-3. Chave do Azure Speech (`AZURE_SPEECH_KEY`, `AZURE_SPEECH_REGION`)
+3. Credenciais do provedor de tradução: Azure Speech (`AZURE_SPEECH_KEY`, `AZURE_SPEECH_REGION`) e/ou Gemini (`GEMINI_API_KEY`)
 
 ### Configurando as chaves
 
@@ -47,6 +47,21 @@ dotnet run --project src/Polyglotta.Cli -- --mic "USB Audio" --loopback "Display
 Se o trecho casar com mais de um dispositivo, o app lista os candidatos e pede algo mais específico. Os ids vêm de `--list-devices` (captura começa com `{0.0.1…}`, reprodução com `{0.0.0…}`). Sem `--mic`, usa o microfone padrão de comunicação.
 
 > Dispositivos **desabilitados** no Windows não aparecem em `--list-devices` e não podem ser usados. Se o seu microfone sumiu da lista, abra `mmsys.cpl` → aba Gravação → botão direito → *Mostrar dispositivos desativados* → Ativar. Sem `--loopback`/`--phones` o CLI usa o dispositivo de comunicação padrão para ambos, o que dispara a guarda. "CABLE Input" é reservado ao microfone virtual e não pode ser usado em nenhum dos dois, assim como "CABLE Output" não pode ser o `--mic`.
+
+### Escolhendo o provedor de tradução
+
+```bash
+dotnet run --project src/Polyglotta.Cli -- --provider gemini ...
+```
+
+| | `azure` (padrão) | `gemini` |
+|---|---|---|
+| Arquitetura | STT → tradução → TTS | fala-para-fala nativo |
+| Credenciais | `AZURE_SPEECH_KEY`, `AZURE_SPEECH_REGION` | `GEMINI_API_KEY`, ou `GOOGLE_CLOUD_PROJECT` + `GOOGLE_CLOUD_LOCATION` (Vertex AI) |
+| Escolha de voz | sim (`--voice`, `--voice-in`) | **não** — o modo de tradução não expõe seleção de voz |
+| Maturidade | GA | modelo em preview (`GEMINI_LIVE_MODEL` fixa outro) |
+
+Ver ADR-0006. A comparação entre os dois é justamente o objetivo: meça a latência pelo resumo do encerramento e ouça as duas saídas antes de eleger um padrão.
 
 ### Escolhendo a voz
 

@@ -16,7 +16,7 @@
 - **2026-09-22** — feedback do primeiro uso real: vozes soavam mecânicas (eram `JennyNeural`/`FranciscaNeural`, neurais de 1a geração). Adicionado `AzureVoices`: apelidos `male`/`female` por locale resolvidos para vozes **HD** (`DragonHD` para en-US, `DragonHDOmni` para pt-BR, que não tem DragonHD), passagem de nomes completos, e `--list-voices` consultando o catálogo do recurso. Novo projeto `tests/Polyglotta.Translation.Azure.Tests` (16 testes). Padrão mudou para voz HD feminina. O plano F0 não afeta qualidade de voz (limita cota/concorrência).
 - **2026-09-22** — `--list-voices` no recurso real desmentiu a documentação: **pt-BR tem DragonHD** (`pt-BR-Thalita`, `pt-BR-Macerio`), e os nomes Omni que eu havia deduzido da doc (`pt-BR-Francisca:DragonHDOmniLatestNeural`, `pt-BR-Antonio:…`) **não existem** — teriam falhado em runtime. A tabela fixa foi substituída por seleção a partir do catálogo (`AzureVoices.Select`, ranking HD > Omni > Flash > Dragon > Multilingual, com penalidade para `-Preview` e `Multitalker`), com fallback para padrões verificados quando a consulta falha. 27 testes no projeto Azure, usando um recorte do catálogo real como fixture.
 
-## Estado verificado
+## Estado verificado (2026-09-19 — histórico, já corrigido)
 
 - `dotnet build src/Polyglotta.sln` → **falha no restore** (NU1201).
 - `Polyglotta.Audio.Windows` isolado → **3 erros de compilação** + 8 warnings de API obsoleta (NAudio 3.1.0).
