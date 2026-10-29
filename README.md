@@ -2,6 +2,10 @@
 
 Dublagem simultânea PT↔EN para chamadas no Meet/Teams. Você fala português, o outro lado ouve inglês sintetizado — e vice-versa.
 
+Roda como um **agente de bandeja** na sua sessão do Windows (ADR-0007): ícone ao lado do relógio com **Ativar**, **Desativar**, **Configurar** e **Fechar**. O mesmo mecanismo continua disponível pelo CLI, que é o caminho para diagnóstico.
+
+Não há integração com o Meet, o Teams ou qualquer outro app: a tradução sai num microfone virtual, e **qualquer** aplicação que escolher esse microfone funciona.
+
 ## Pré-requisitos (Windows)
 
 1. .NET 9 SDK
@@ -10,7 +14,17 @@ Dublagem simultânea PT↔EN para chamadas no Meet/Teams. Você fala português,
 
 ### Configurando as chaves
 
-No PowerShell (só nesta janela):
+Pela bandeja: **Configurar → Credenciais**. O valor é gravado cifrado com DPAPI em `%APPDATA%\Polyglotta\credentials.json` — decifrável só por você, nesta máquina (ADR-0009).
+
+Pelo CLI, sem ecoar o valor no terminal:
+
+```powershell
+dotnet run --project src/Polyglotta.Cli -- --set-credential AZURE_SPEECH_KEY
+dotnet run --project src/Polyglotta.Cli -- --set-credential AZURE_SPEECH_REGION
+dotnet run --project src/Polyglotta.Cli -- --show-config
+```
+
+Variáveis de ambiente continuam funcionando e **têm precedência** sobre o que estiver salvo:
 
 ```powershell
 $env:AZURE_SPEECH_KEY = 'cole-a-chave-aqui'
@@ -21,7 +35,17 @@ Para persistir entre sessões: `setx AZURE_SPEECH_REGION eastus` (abra um termin
 
 > **Atenção:** no `cmd.exe`, `set VAR="eastus"` guarda as **aspas dentro do valor** e a conexão falha com um erro de DNS confuso (`wss://"eastus".stt.speech…`). Use `set VAR=eastus`, sem aspas. O app remove aspas e espaços sobrando e loga a região no startup (`Azure region: eastus`) — confira essa linha se houver erro de conexão.
 
-## Rodando a v0 (console)
+## Rodando na bandeja
+
+```powershell
+dotnet run --project src/Polyglotta.Tray
+```
+
+Sobe sem console e sem janela: procure o ícone de dois balões ao lado do relógio. Ele começa **desativado** — abrir o microfone sozinho no logon não é comportamento que se assume. Em **Configurar** ficam dispositivos, idiomas, vozes, credenciais, a transcrição ao vivo e o p95 de latência; marcando "Iniciar ao entrar no Windows" ele cria uma tarefa agendada de logon (sem exigir administrador).
+
+A configuração fica em `%APPDATA%\Polyglotta\config.json` e os logs em `%APPDATA%\Polyglotta\logs`. O CLI lê o mesmo arquivo, então dá para configurar num e rodar no outro.
+
+## Rodando pelo CLI
 
 ```bash
 dotnet run --project src/Polyglotta.Cli -- --list-devices
@@ -108,5 +132,7 @@ Este repositório é preparado para desenvolvimento agêntico: contexto em `CLAU
 dotnet build src/Polyglotta.sln
 dotnet test src/Polyglotta.sln
 ```
+
+A orquestração mora em `Polyglotta.Host` (neutro de plataforma): o CLI e a bandeja são dois frontends finos sobre o mesmo `DubbingSession`, e as guardas de roteamento são as mesmas nos dois porque vêm do mesmo `SessionPlanner`.
 
 A camada de áudio usa NAudio 3.x com a API de builders (`WasapiRecorderBuilder`/`WasapiPlayerBuilder`) — ver ADR-0005. As classes `WasapiCapture`/`WasapiOut` do NAudio 2.x estão obsoletas e são tratadas como erro de compilação em `Polyglotta.Audio.Windows`.

@@ -1,6 +1,6 @@
 # PRD-001 — Dublagem simultânea em chamadas (v1 Windows)
 
-**Status:** Ativo · **Última atualização:** 2026-10-18
+**Status:** Ativo · **Última atualização:** 2026-10-28
 
 ## Problema
 
@@ -35,13 +35,15 @@ Profissional brasileiro em reunião com cliente/time nos EUA. Entra na chamada, 
 | RF-05 | Mute do pipeline outbound (falar sem traduzir) |
 | RF-06 | Exibir transcrição parcial/final e tradução em tempo real (log na v0) |
 | RF-07 | Reconexão automática do serviço de tradução em caso de queda |
+| RF-08 | Operação residente na sessão do usuário, com ícone de bandeja: ativar, desativar, configurar e fechar (ADR-0007/ADR-0008) |
+| RF-09 | Configuração persistida por usuário (provedor, dispositivos, idiomas, vozes) e credenciais guardadas com cifra do SO (ADR-0009) |
 
 ## Requisitos não funcionais
 
 - **Latência:** ≤ 3 s do fim da frase à síntese (p95). Medir e logar. *Medição (2026-09-21): `LatencyTracker` no Core — último frame com voz (RMS > limiar) no instante do transcript final → primeiro chunk sintetizado; log por frase com p95 acumulado e resumo no encerramento do CLI.* **Primeira medição real (2026-09-22, outbound, n=6): p95 1,46 s — dentro da meta.**
 - **Estabilidade:** 60 min de chamada sem vazamento de memória ou drift de buffer.
 - **CPU:** processamento local leve (o trabalho pesado é na nuvem).
-- **Segurança:** chaves só via variável de ambiente; nenhum áudio persistido por padrão.
+- **Segurança:** chaves nunca em texto puro no disco — variável de ambiente (precedência) ou cofre do sistema operacional (ADR-0009); chave nunca aparece em log. Nenhum áudio persistido por padrão. *Revisado em 2026-10-28: a regra anterior era "chaves só via variável de ambiente", inviável para um app que sobe no logon com tela de configuração.*
 
 ## Métricas de sucesso
 
@@ -55,4 +57,4 @@ Profissional brasileiro em reunião com cliente/time nos EUA. Entra na chamada, 
 2. **M1 — Outbound funcional** ✅ 2026-09-22: falar PT no mic e sair EN no VB-Cable. Verificado com Azure real (`eastus`): 6 frases PT→EN, latência 0,85–1,46 s, **p95 1,46 s**.
 3. **M2 — Inbound funcional**: loopback traduzido no fone (atenção a eco/feedback).
 4. **M3 — Sessão completa**: dois pipelines simultâneos, mute, métricas de latência.
-5. **M4 — UI mínima** (WinUI/Avalonia — exigirá ADR).
+5. **M4 — Agente de bandeja**: aplicação residente na sessão do usuário, iniciada no logon, com ícone de bandeja (ativar/desativar/configurar/fechar) e tela de configuração em Avalonia. Decidido em 2026-10-28 — ADR-0007 (forma de execução), ADR-0008 (Avalonia), ADR-0009 (credenciais).

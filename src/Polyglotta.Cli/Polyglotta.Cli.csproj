@@ -9,8 +9,9 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="10.0.12" />
     <ProjectReference Include="..\Polyglotta.Core\Polyglotta.Core.csproj" />
+    <ProjectReference Include="..\Polyglotta.Host\Polyglotta.Host.csproj" />
     <ProjectReference Include="..\Polyglotta.Audio.Windows\Polyglotta.Audio.Windows.csproj" />
+    <ProjectReference Include="..\Polyglotta.Security.Windows\Polyglotta.Security.Windows.csproj" />
     <ProjectReference Include="..\Polyglotta.Translation.Azure\Polyglotta.Translation.Azure.csproj" />
-    <ProjectReference Include="..\Polyglotta.Translation.Gemini\Polyglotta.Translation.Gemini.csproj" />
   </ItemGroup>
 </Project>

@@ -1,0 +1,131 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Polyglotta.Tray.ConfigWindow"
+        Title="Polyglotta — Configuração"
+        Width="760" Height="700"
+        MinWidth="640" MinHeight="560"
+        WindowStartupLocation="CenterScreen">
+
+  <DockPanel Margin="16">
+
+    <!-- status + actions -->
+    <Border DockPanel.Dock="Bottom" Margin="0,12,0,0" Padding="0,12,0,0"
+            BorderBrush="#30808080" BorderThickness="0,1,0,0">
+      <Grid ColumnDefinitions="*,Auto,Auto,Auto">
+        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+          <TextBlock x:Name="StateText" FontWeight="SemiBold" Text="parado" />
+          <TextBlock x:Name="LatencyText" Opacity="0.7" FontSize="12" Text="" />
+        </StackPanel>
+        <Button Grid.Column="1" x:Name="ValidateButton" Content="Validar" Margin="0,0,8,0" />
+        <Button Grid.Column="2" x:Name="SaveButton" Content="Salvar" Margin="0,0,8,0" />
+        <Button Grid.Column="3" x:Name="ToggleButton" Content="Ativar"
+                Classes="accent" MinWidth="110" />
+      </Grid>
+    </Border>
+
+    <ScrollViewer>
+      <StackPanel Spacing="18">
+
+        <!-- problems -->
+        <Border x:Name="ProblemsPanel" IsVisible="False"
+                Background="#22D97706" BorderBrush="#66D97706" BorderThickness="1"
+                CornerRadius="6" Padding="12">
+          <StackPanel Spacing="6">
+            <TextBlock Text="Pendências" FontWeight="SemiBold" />
+            <ItemsControl x:Name="ProblemsList">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <TextBlock Text="{Binding}" TextWrapping="Wrap" Margin="0,2" />
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </Border>
+
+        <!-- devices -->
+        <StackPanel Spacing="8">
+          <TextBlock Text="Dispositivos" FontWeight="SemiBold" FontSize="15" />
+          <TextBlock TextWrapping="Wrap" Opacity="0.75" FontSize="12"
+                     Text="O áudio da chamada precisa tocar num dispositivo diferente do fone: é o que o loopback captura. O microfone virtual (CABLE Input) é escolhido sozinho." />
+          <Grid ColumnDefinitions="150,*" RowDefinitions="Auto,Auto,Auto" >
+            <TextBlock Grid.Row="0" Grid.Column="0" Text="Microfone" VerticalAlignment="Center" Margin="0,6" />
+            <ComboBox Grid.Row="0" Grid.Column="1" x:Name="MicBox" HorizontalAlignment="Stretch" Margin="0,6" />
+
+            <TextBlock Grid.Row="1" Grid.Column="0" Text="Saída da chamada" VerticalAlignment="Center" Margin="0,6" />
+            <ComboBox Grid.Row="1" Grid.Column="1" x:Name="LoopbackBox" HorizontalAlignment="Stretch" Margin="0,6" />
+
+            <TextBlock Grid.Row="2" Grid.Column="0" Text="Fone" VerticalAlignment="Center" Margin="0,6" />
+            <ComboBox Grid.Row="2" Grid.Column="1" x:Name="PhonesBox" HorizontalAlignment="Stretch" Margin="0,6" />
+          </Grid>
+          <Button x:Name="RefreshDevicesButton" Content="Reler dispositivos" HorizontalAlignment="Left" />
+        </StackPanel>
+
+        <!-- translation -->
+        <StackPanel Spacing="8">
+          <TextBlock Text="Tradução" FontWeight="SemiBold" FontSize="15" />
+          <Grid ColumnDefinitions="150,*" RowDefinitions="Auto,Auto,Auto,Auto">
+            <TextBlock Grid.Row="0" Grid.Column="0" Text="Provedor" VerticalAlignment="Center" Margin="0,6" />
+            <ComboBox Grid.Row="0" Grid.Column="1" x:Name="ProviderBox" Width="220"
+                      HorizontalAlignment="Left" Margin="0,6" />
+
+            <TextBlock Grid.Row="1" Grid.Column="0" Text="Eu falo" VerticalAlignment="Center" Margin="0,6" />
+            <ComboBox Grid.Row="1" Grid.Column="1" x:Name="FromBox" Width="220"
+                      HorizontalAlignment="Left" Margin="0,6" />
+
+            <TextBlock Grid.Row="2" Grid.Column="0" Text="Ele ouve" VerticalAlignment="Center" Margin="0,6" />
+            <ComboBox Grid.Row="2" Grid.Column="1" x:Name="ToBox" Width="220"
+                      HorizontalAlignment="Left" Margin="0,6" />
+
+            <TextBlock Grid.Row="3" Grid.Column="0" Text="Vozes" VerticalAlignment="Center" Margin="0,6" />
+            <StackPanel Grid.Row="3" Grid.Column="1" Orientation="Horizontal" Spacing="8" Margin="0,6">
+              <TextBlock Text="que ele ouve" VerticalAlignment="Center" Opacity="0.75" />
+              <ComboBox x:Name="VoiceOutBox" Width="130" />
+              <TextBlock Text="que eu ouço" VerticalAlignment="Center" Opacity="0.75" Margin="12,0,0,0" />
+              <ComboBox x:Name="VoiceInBox" Width="130" />
+            </StackPanel>
+          </Grid>
+          <TextBlock x:Name="VoiceNote" IsVisible="False" TextWrapping="Wrap" FontSize="12" Opacity="0.75"
+                     Text="O modo de tradução do Gemini não permite escolher a voz (ADR-0006); estes campos ficam sem efeito." />
+        </StackPanel>
+
+        <!-- credentials -->
+        <StackPanel Spacing="8">
+          <TextBlock Text="Credenciais" FontWeight="SemiBold" FontSize="15" />
+          <TextBlock TextWrapping="Wrap" Opacity="0.75" FontSize="12"
+                     Text="Guardadas cifradas pelo Windows, só para este usuário nesta máquina. Uma variável de ambiente com o mesmo nome continua tendo precedência." />
+          <Grid ColumnDefinitions="*,Auto,Auto" RowDefinitions="Auto,Auto">
+            <ComboBox Grid.Row="0" Grid.Column="0" x:Name="CredentialNameBox"
+                      HorizontalAlignment="Stretch" Margin="0,0,8,8" />
+            <TextBox Grid.Row="1" Grid.Column="0" x:Name="CredentialValueBox"
+                     PasswordChar="•" Watermark="valor" Margin="0,0,8,0" />
+            <Button Grid.Row="1" Grid.Column="1" x:Name="SaveCredentialButton" Content="Salvar" Margin="0,0,8,0" />
+            <Button Grid.Row="1" Grid.Column="2" x:Name="ForgetCredentialButton" Content="Remover" />
+          </Grid>
+          <TextBlock x:Name="CredentialStatus" FontSize="12" Opacity="0.85" TextWrapping="Wrap" />
+        </StackPanel>
+
+        <!-- startup -->
+        <StackPanel Spacing="8">
+          <TextBlock Text="Início" FontWeight="SemiBold" FontSize="15" />
+          <CheckBox x:Name="AutostartBox" Content="Iniciar o Polyglotta ao entrar no Windows" />
+          <CheckBox x:Name="ActivateOnStartupBox" Content="Já ativar a dublagem ao iniciar" />
+          <TextBlock x:Name="AutostartStatus" FontSize="12" Opacity="0.75" TextWrapping="Wrap" />
+        </StackPanel>
+
+        <!-- transcript -->
+        <StackPanel Spacing="8">
+          <Grid ColumnDefinitions="*,Auto">
+            <TextBlock Grid.Column="0" Text="Transcrição" FontWeight="SemiBold" FontSize="15"
+                       VerticalAlignment="Center" />
+            <Button Grid.Column="1" x:Name="ClearTranscriptButton" Content="Limpar" />
+          </Grid>
+          <Border BorderBrush="#30808080" BorderThickness="1" CornerRadius="6" Height="160">
+            <ListBox x:Name="TranscriptList" FontFamily="Consolas,monospace" FontSize="12" />
+          </Border>
+          <TextBlock x:Name="ConfigPathText" FontSize="11" Opacity="0.6" TextWrapping="Wrap" />
+        </StackPanel>
+
+      </StackPanel>
+    </ScrollViewer>
+  </DockPanel>
+</Window>

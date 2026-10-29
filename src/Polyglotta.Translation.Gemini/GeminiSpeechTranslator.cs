@@ -61,15 +61,22 @@ public sealed class GeminiSpeechTranslator : ISpeechTranslator
     /// `GOOGLE_CLOUD_PROJECT` + `GOOGLE_CLOUD_LOCATION` com credencial padrão do gcloud.
     /// `GEMINI_LIVE_MODEL` permite fixar outro modelo.
     /// </summary>
-    public static GeminiSpeechTranslator FromEnvironment()
-    {
-        var model = EnvironmentSettings.Read("GEMINI_LIVE_MODEL");
+    public static GeminiSpeechTranslator FromEnvironment() =>
+        FromCredentials(new EnvironmentCredentialStore());
 
-        if (EnvironmentSettings.Read("GEMINI_API_KEY") is { } apiKey)
+    /// <summary>
+    /// Builds from any credential source (ADR-0009): environment variable, OS vault,
+    /// or a chain of both. The variable names are unchanged.
+    /// </summary>
+    public static GeminiSpeechTranslator FromCredentials(ICredentialStore credentials)
+    {
+        var model = credentials.Read("GEMINI_LIVE_MODEL");
+
+        if (credentials.Read("GEMINI_API_KEY") is { } apiKey)
             return new GeminiSpeechTranslator(new Client(apiKey: apiKey), model);
 
-        var project = EnvironmentSettings.Read("GOOGLE_CLOUD_PROJECT");
-        var location = EnvironmentSettings.Read("GOOGLE_CLOUD_LOCATION");
+        var project = credentials.Read("GOOGLE_CLOUD_PROJECT");
+        var location = credentials.Read("GOOGLE_CLOUD_LOCATION");
         if (project is not null && location is not null)
             return new GeminiSpeechTranslator(new Client(vertexAI: true, project: project, location: location), model);
 

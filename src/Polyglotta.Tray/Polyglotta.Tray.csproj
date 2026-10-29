@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>14</LangVersion>
+    <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
+    <!-- O código-behind preenche as listas; não há ViewModel para tipar bindings compilados. -->
+    <AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>
+    <ApplicationIcon>Assets\icon-active.ico</ApplicationIcon>
+  </PropertyGroup>
+  <ItemGroup>
+    <AvaloniaResource Include="Assets\**" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- ADR-0008: Avalonia para bandeja e configuração. -->
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.12" />
+    <PackageReference Include="Avalonia" Version="12.1.4" />
+    <PackageReference Include="Avalonia.Desktop" Version="12.1.4" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.4" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Polyglotta.Core\Polyglotta.Core.csproj" />
+    <ProjectReference Include="..\Polyglotta.Host\Polyglotta.Host.csproj" />
+    <ProjectReference Include="..\Polyglotta.Audio.Windows\Polyglotta.Audio.Windows.csproj" />
+    <ProjectReference Include="..\Polyglotta.Security.Windows\Polyglotta.Security.Windows.csproj" />
+    <ProjectReference Include="..\Polyglotta.Translation.Azure\Polyglotta.Translation.Azure.csproj" />
+  </ItemGroup>
+</Project>
