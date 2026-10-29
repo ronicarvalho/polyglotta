@@ -94,9 +94,15 @@ public partial class ConfigWindow : Window
             : default;
 
         var devices = _app.ListDevices();
-        MicBox.ItemsSource = devices.Where(d => d.Kind == AudioDeviceKind.Capture).Select(d => new DeviceOption(d)).ToList();
-        LoopbackBox.ItemsSource = devices.Where(d => d.Kind == AudioDeviceKind.Render).Select(d => new DeviceOption(d)).ToList();
-        PhonesBox.ItemsSource = devices.Where(d => d.Kind == AudioDeviceKind.Render).Select(d => new DeviceOption(d)).ToList();
+        var settings = _app.Settings;
+
+        // O cabo virtual não entra nas listas: ele não é escolha, é consequência.
+        List<DeviceOption> Options(AudioDeviceKind kind) =>
+            SessionPlanner.Selectable(settings, kind, devices).Select(d => new DeviceOption(d)).ToList();
+
+        MicBox.ItemsSource = Options(AudioDeviceKind.Capture);
+        LoopbackBox.ItemsSource = Options(AudioDeviceKind.Render);
+        PhonesBox.ItemsSource = Options(AudioDeviceKind.Render);
 
         if (!keepSelection)
             return;

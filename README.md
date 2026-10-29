@@ -56,7 +56,9 @@ São três escolhas, e a relação entre elas é o que faz a coisa funcionar:
 
 **Saída da chamada e Fone precisam ser dispositivos diferentes.** Se forem o mesmo, a tradução que o app reproduz seria recapturada e retraduzida em loop — e o app se recusa a iniciar, em vez de produzir esse resultado. O arranjo típico é configurar o Meet/Teams para tocar numa saída secundária (um monitor por HDMI, por exemplo) e deixar o fone só para você.
 
-O microfone virtual **não se escolhe**: o app procura sozinho o "CABLE Input", porque ele é o destino fixo da tradução de saída. Os dois lados do cabo virtual continuam aparecendo nas listas, junto com todo o resto que o Windows enumera, mas usar um deles aqui é erro: "CABLE Input" como fone ou como saída da chamada, e "CABLE Output" como microfone, fazem o app traduzir a própria saída. A validação recusa os três casos com a explicação.
+O microfone virtual **não se escolhe**, e por isso não aparece: os dois lados do cabo ficam fora das três listas. O lado de saída ("CABLE Input") é destino fixo da tradução, encontrado sozinho; o lado de entrada ("CABLE Output") é o que a chamada escuta, e usá-lo como microfone faria o app capturar a própria tradução. Outros dispositivos do VB-Cable — "CABLE In 16ch", por exemplo — são dispositivos diferentes e continuam disponíveis: são uma escolha legítima de saída da chamada.
+
+Esconder da tela **não** desliga a verificação: o CLI aceita qualquer nome e uma configuração antiga pode ter o cabo gravado, então a validação continua recusando esses casos com a explicação. Os nomes dos dois lados são configuração, não código (`VirtualMicName` e `VirtualMicCaptureName`), porque no macOS e no Linux o cabo virtual tem outro nome — e costuma ser um único dispositivo servindo de entrada e saída.
 
 **Reler dispositivos** atualiza as listas sem fechar a tela, para quando você pluga um fone no meio da configuração.
 

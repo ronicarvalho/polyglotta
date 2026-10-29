@@ -52,6 +52,13 @@ public sealed record PolyglottaSettings
     public string VirtualMicName { get; init; } = "CABLE Input";
 
     /// <summary>
+    /// O lado de captura do mesmo cabo virtual — o que a aplicação de chamada escuta.
+    /// Separado porque no VB-Cable são dois dispositivos com nomes diferentes; no BlackHole
+    /// (macOS) e num null sink do PipeWire costuma ser o mesmo nome dos dois lados.
+    /// </summary>
+    public string VirtualMicCaptureName { get; init; } = "CABLE Output";
+
+    /// <summary>
     /// Whether the tray agent should activate as soon as it starts. Off by default:
     /// an app that opens the microphone at logon without being asked loses trust.
     /// </summary>
