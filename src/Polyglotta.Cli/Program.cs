@@ -1,10 +1,15 @@
+using Microsoft.Extensions.Logging;
 using Polyglotta.Audio.Windows;
 using Polyglotta.Core.Audio;
 using Polyglotta.Core.Configuration;
 using Polyglotta.Core.Pipeline;
-using Polyglotta.Core.Translation;
+using Polyglotta.Host;
+using Polyglotta.Security.Windows;
 using Polyglotta.Translation.Azure;
-using Microsoft.Extensions.Logging;
+
+// The CLI is one of two frontends over Polyglotta.Host (ADR-0007); the tray is the
+// other. Everything here is argument parsing, console output and diagnostics — the
+// orchestration lives in DubbingSession.
 
 var loggerFactory = LoggerFactory.Create(b => b.AddSimpleConsole(o =>
 {
@@ -13,160 +18,157 @@ var loggerFactory = LoggerFactory.Create(b => b.AddSimpleConsole(o =>
 }).SetMinimumLevel(LogLevel.Debug));
 var log = loggerFactory.CreateLogger("cli");
 
-var enumerator = new WindowsAudioDeviceEnumerator();
+var platform = new WindowsAudioPlatform();
 
-if (args.Contains("--list-devices"))
-{
-    foreach (var d in enumerator.ListDevices())
-        Console.WriteLine($"[{d.Kind}] {(d.IsDefault ? "*" : " ")} {d.Name}\n    id: {d.Id}");
-    return 0;
-}
+// Environment first, OS vault second (ADR-0009): an exported variable keeps winning,
+// so every command in the README goes on working exactly as before.
+var vault = new DpapiCredentialStore();
+var credentials = new ChainedCredentialStore(new EnvironmentCredentialStore(), vault);
+
+var settingsStore = new SettingsStore();
 
 string Arg(string name, string fallback) =>
     args.SkipWhile(a => a != name).Skip(1).FirstOrDefault() ?? fallback;
 
-// Device check mode needs no cloud credentials.
-var checkAudio = args.Contains("--check-audio");
-
-if (!checkAudio)
+if (args.Contains("--help") || args.Contains("-h"))
 {
-    foreach (var name in new[] { "AZURE_SPEECH_KEY", "AZURE_SPEECH_REGION" })
-    {
-        if (EnvironmentSettings.Read(name) is null)
-        {
-            log.LogError("Variável de ambiente {Name} não definida (ver README).", name);
-            return 1;
-        }
-    }
-
-    log.LogInformation("Azure region: {Region}", EnvironmentSettings.Require("AZURE_SPEECH_REGION"));
+    PrintHelp();
+    return 0;
 }
 
-var fromLang = Arg("--from", "pt-BR");
-var toLang = Arg("--to", "en-US");
+if (args.Contains("--list-devices"))
+{
+    foreach (var d in platform.Devices.ListDevices())
+        Console.WriteLine($"[{d.Kind}] {(d.IsDefault ? "*" : " ")} {d.Name}\n    id: {d.Id}");
+    return 0;
+}
 
-// --voice/--voice-in aceitam "male"/"female" ou o nome completo da voz Azure.
-// O padrão é voz HD (bem mais natural que as neurais de 1a geração).
-var voiceKey = checkAudio ? "" : EnvironmentSettings.Require("AZURE_SPEECH_KEY");
-var voiceRegion = checkAudio ? "" : EnvironmentSettings.Require("AZURE_SPEECH_REGION");
-var outVoice = checkAudio ? null : await AzureVoices.ResolveAsync(Arg("--voice", "female"), toLang, voiceKey, voiceRegion);
-var inVoice = checkAudio ? null : await AzureVoices.ResolveAsync(Arg("--voice-in", "female"), fromLang, voiceKey, voiceRegion);
+// --- credentials (ADR-0009) -------------------------------------------------
+
+if (args.Contains("--set-credential"))
+    return SetCredential(Arg("--set-credential", ""));
+
+if (args.Contains("--forget-credential"))
+{
+    var name = Arg("--forget-credential", "");
+    if (name.Length == 0)
+    {
+        log.LogError("--forget-credential exige o nome, ex.: --forget-credential AZURE_SPEECH_KEY");
+        return 1;
+    }
+    vault.Delete(name);
+    Console.WriteLine($"{name}: removido do cofre do Windows.");
+    return 0;
+}
+
+// --- settings: saved file, overridden by whatever came on the command line ----
+
+var saved = settingsStore.Load();
+
+DeviceSelection Device(string option, DeviceSelection fallback) =>
+    args.Contains(option) && Arg(option, "") is { Length: > 0 } value
+        // The value may be an endpoint id or a fragment of the name; the planner tries
+        // the name first and falls back to the id, so both are offered.
+        ? new DeviceSelection(value, value)
+        : fallback;
+
+var settings = saved with
+{
+    Provider = Arg("--provider", saved.Provider).Trim().ToLowerInvariant(),
+    FromLanguage = Arg("--from", saved.FromLanguage),
+    ToLanguage = Arg("--to", saved.ToLanguage),
+    OutboundVoice = Arg("--voice", saved.OutboundVoice),
+    InboundVoice = Arg("--voice-in", saved.InboundVoice),
+    Microphone = Device("--mic", saved.Microphone),
+    Loopback = Device("--loopback", saved.Loopback),
+    Phones = Device("--phones", saved.Phones)
+};
+
+if (settings.Provider is not ("azure" or "gemini"))
+{
+    log.LogError("--provider \"{Provider}\": use \"azure\" ou \"gemini\".", settings.Provider);
+    return 1;
+}
+
+if (args.Contains("--save-config"))
+{
+    settingsStore.Save(settings);
+    Console.WriteLine($"Configuração salva em {settingsStore.Path}");
+    PrintConfig(settings);
+    return 0;
+}
+
+if (args.Contains("--show-config"))
+{
+    Console.WriteLine($"Versão: {AppVersion.Current}");
+    Console.WriteLine($"Arquivo: {settingsStore.Path}{(File.Exists(settingsStore.Path) ? "" : " (ainda não existe)")}");
+    PrintConfig(settings);
+    return 0;
+}
 
 if (args.Contains("--list-voices"))
 {
+    var key = credentials.Read("AZURE_SPEECH_KEY");
+    var region = credentials.Read("AZURE_SPEECH_REGION");
+    if (key is null || region is null)
+    {
+        log.LogError("--list-voices precisa de AZURE_SPEECH_KEY e AZURE_SPEECH_REGION (ver --set-credential).");
+        return 1;
+    }
+
     var filter = Arg("--list-voices", "");
-    var wanted = filter.Length > 0 ? new[] { filter } : new[] { fromLang, toLang };
+    var wanted = filter.Length > 0 && !filter.StartsWith("--")
+        ? [filter]
+        : new[] { settings.FromLanguage, settings.ToLanguage };
+
     foreach (var locale in wanted)
     {
         Console.WriteLine($"\n=== {locale}");
-        foreach (var v in await AzureVoices.ListAsync(voiceKey, voiceRegion, locale))
+        foreach (var v in await AzureVoices.ListAsync(key, region, locale))
             Console.WriteLine($"  {(v.IsHighDefinition ? "HD" : "  ")} {v.Gender,-7} {v.ShortName}");
     }
     Console.WriteLine("\nUse o nome em --voice (idioma de saída) ou --voice-in (idioma de entrada).");
     return 0;
 }
 
-// Outbound render target: the VB-Cable virtual mic input (ADR-0002).
-var cable = enumerator.FindByName("CABLE Input", AudioDeviceKind.Render);
-if (cable is null)
+// --- device check: proves the routing without touching the cloud --------------
+
+var plan = SessionPlanner.Prepare(settings, platform.Devices.ListDevices());
+if (args.Contains("--check-audio"))
 {
-    log.LogError("Dispositivo \"CABLE Input\" não encontrado. Instale o VB-Cable: https://vb-audio.com/Cable/");
-    return 1;
+    if (plan.Plan is null)
+    {
+        foreach (var p in plan.Problems)
+            log.LogError("{Field}: {Message}", p.Field, p.Message);
+        return 1;
+    }
+    return await CheckAudioAsync(plan.Plan);
 }
 
-var devices = enumerator.ListDevices();
+// --- run ----------------------------------------------------------------------
 
-AudioDeviceInfo? Resolve(string option, AudioDeviceKind kind)
-{
-    // Accepts an endpoint id or a fragment of the device name, so a command can be
-    // written once and survive the ids changing between machines and reconnections.
-    var value = Arg(option, "");
-    if (value.Length == 0)
-        return devices.FirstOrDefault(d => d.Kind == kind && d.IsDefault);
+if (!settings.UsesAzure && (args.Contains("--voice") || args.Contains("--voice-in")))
+    log.LogWarning("--voice/--voice-in são ignorados com --provider gemini: o modo de tradução não permite escolher a voz.");
 
-    var candidates = devices.Where(d => d.Kind == kind).ToList();
-    if (candidates.FirstOrDefault(d => d.Id == value) is { } byId)
-        return byId;
+log.LogInformation("Provedor: {Provider}", settings.UsesAzure
+    ? $"Azure (região {credentials.Read("AZURE_SPEECH_REGION") ?? "não configurada"})"
+    : $"Gemini Live tradução (modelo {credentials.Read("GEMINI_LIVE_MODEL") ?? "padrão"})");
 
-    var byName = candidates
-        .Where(d => d.Name.Contains(value, StringComparison.OrdinalIgnoreCase))
-        .ToList();
-
-    if (byName.Count == 1)
-        return byName[0];
-
-    if (byName.Count == 0)
-        log.LogError("{Option} \"{Value}\": nenhum dispositivo de {Kind} com esse id ou nome. Use --list-devices.",
-            option, value, kind);
-    else
-        log.LogError("{Option} \"{Value}\": ambíguo, {Count} dispositivos de {Kind} correspondem ({Names}). Seja mais específico ou use o id.",
-            option, value, byName.Count, kind, string.Join(" | ", byName.Select(d => d.Name)));
-    return null;
-}
-
-// Outbound source: the physical microphone (default communications device unless --mic).
-var mic = Resolve("--mic", AudioDeviceKind.Capture);
-
-// Inbound source: the render device Meet/Teams plays on (tapped via WASAPI loopback).
-var loopback = Resolve("--loopback", AudioDeviceKind.Render);
-// Inbound playback: the user's headphones.
-var phones = Resolve("--phones", AudioDeviceKind.Render);
-if (mic is null || loopback is null || phones is null)
-    return 1;
-
-// Feedback guards (audio-realtime skill): the translated audio we play must never
-// be captured back by the loopback, and nothing inbound may go to the virtual mic.
-if (phones.Id == loopback.Id)
-{
-    log.LogError(
-        "O fone ({Phones}) é o mesmo dispositivo capturado por loopback. A tradução seria " +
-        "recapturada e retraduzida em loop. Faça o Meet/Teams tocar num dispositivo (--loopback) " +
-        "diferente do fone (--phones). Veja os ids em --list-devices.", phones.Name);
-    return 1;
-}
-if (phones.Id == cable.Id || loopback.Id == cable.Id)
-{
-    log.LogError("\"CABLE Input\" é reservado ao microfone virtual (outbound); não use como --phones nem --loopback.");
-    return 1;
-}
-if (mic.Name.Contains("CABLE Output", StringComparison.OrdinalIgnoreCase))
-{
-    log.LogError(
-        "\"CABLE Output\" é a saída do microfone virtual (o que o Meet/Teams escuta): usá-lo como --mic " +
-        "faria o app capturar a própria tradução. Escolha o microfone físico em --list-devices.");
-    return 1;
-}
-
-if (checkAudio)
-    return await CheckAudioAsync();
-
-log.LogInformation("Outbound: {Mic} -> {From}->{To} ({Voice}) -> {Cable}", mic.Name, fromLang, toLang, outVoice ?? "voz padrão", cable.Name);
-log.LogInformation("Inbound : loopback({Loopback}) -> {To}->{From} ({Voice}) -> {Phones}", loopback.Name, toLang, fromLang, inVoice ?? "voz padrão", phones.Name);
-
-await using var outbound = new DubbingPipeline(
-    "outbound",
-    new WasapiMicCapture(mic.Id),
-    AzureSpeechTranslator.FromEnvironment(),
-    new WasapiRenderDevice(cable.Id),
-    loggerFactory.CreateLogger<DubbingPipeline>());
-
-await using var inbound = new DubbingPipeline(
-    "inbound",
-    new WasapiLoopbackSystemCapture(loopback.Id),
-    AzureSpeechTranslator.FromEnvironment(),
-    new WasapiRenderDevice(phones.Id),
-    loggerFactory.CreateLogger<DubbingPipeline>());
+await using var session = new DubbingSession(platform, credentials, loggerFactory);
 
 using var cts = new CancellationTokenSource();
 Console.CancelKeyPress += (_, e) => { e.Cancel = true; cts.Cancel(); };
 
-// RF-07 (auto-reconnect) is not implemented yet: a faulted stage ends the session.
 var faulted = false;
-foreach (var p in new[] { outbound, inbound })
-    p.Faulted += (_, _) => { faulted = true; cts.Cancel(); };
+session.Faulted += (_, _) => { faulted = true; cts.Cancel(); };
 
-await outbound.StartAsync(new TranslatorOptions(fromLang, toLang, outVoice), cts.Token);
-await inbound.StartAsync(new TranslatorOptions(toLang, fromLang, inVoice), cts.Token);
+var problems = await session.StartAsync(settings, cts.Token);
+if (problems.Count > 0)
+{
+    foreach (var p in problems)
+        log.LogError("{Field}: {Message}", p.Field, p.Message);
+    return 1;
+}
 
 log.LogInformation("Rodando. No Meet/Teams selecione \"CABLE Output\" como microfone. [M] mute outbound, Ctrl+C sai.");
 
@@ -175,43 +177,153 @@ while (!cts.IsCancellationRequested)
 {
     if (interactive && Console.KeyAvailable && Console.ReadKey(intercept: true).Key == ConsoleKey.M)
     {
-        outbound.Muted = !outbound.Muted;
-        log.LogInformation("Outbound {State}", outbound.Muted ? "MUTED" : "ativo");
+        session.OutboundMuted = !session.OutboundMuted;
+        log.LogInformation("Outbound {State}", session.OutboundMuted ? "MUTED" : "ativo");
     }
     await Task.Delay(100).ConfigureAwait(false);
 }
 
-await outbound.StopAsync();
-await inbound.StopAsync();
+foreach (var pipeline in new[] { session.Outbound, session.Inbound })
+    ReportLatency(pipeline);
 
-foreach (var p in new[] { outbound, inbound })
-{
-    if (p.Latency.Count > 0)
-        log.LogInformation("[{Pipeline}] latência: n={Count} última={Last:F2}s p95={P95:F2}s (meta ≤ 3 s)",
-            p.Name, p.Latency.Count, p.Latency.Last!.Value.TotalSeconds, p.Latency.P95!.Value.TotalSeconds);
-    else
-        log.LogInformation("[{Pipeline}] latência: nenhuma frase completa medida", p.Name);
-}
-
+await session.StopAsync();
 return faulted ? 2 : 0;
 
-// ---------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+
+void ReportLatency(DubbingPipeline? pipeline)
+{
+    if (pipeline is null)
+        return;
+
+    if (pipeline.Latency.Count > 0)
+        log.LogInformation("[{Pipeline}] latência: n={Count} última={Last:F2}s p95={P95:F2}s (meta ≤ 3 s)",
+            pipeline.Name, pipeline.Latency.Count,
+            pipeline.Latency.Last!.Value.TotalSeconds, pipeline.Latency.P95!.Value.TotalSeconds);
+    else
+        log.LogInformation("[{Pipeline}] latência: nenhuma frase completa medida", pipeline.Name);
+}
+
+void PrintConfig(PolyglottaSettings s)
+{
+    Console.WriteLine($"  provedor   : {s.Provider}");
+    Console.WriteLine($"  idiomas    : {s.FromLanguage} -> {s.ToLanguage}");
+    Console.WriteLine($"  vozes      : saída {s.OutboundVoice}, entrada {s.InboundVoice}");
+    Console.WriteLine($"  microfone  : {s.Microphone}");
+    Console.WriteLine($"  loopback   : {s.Loopback}");
+    Console.WriteLine($"  fone       : {s.Phones}");
+    Console.WriteLine($"  mic virtual: {s.VirtualMicName}");
+    Console.WriteLine($"  ativar ao iniciar: {(s.ActivateOnStartup ? "sim" : "não")}");
+    Console.WriteLine("\n  credenciais:");
+    foreach (var name in TranslatorFactory.CredentialNames(s))
+    {
+        var value = credentials.Read(name);
+        var origin = value is null ? "não configurada"
+            : credentials.ComesFromReadOnlySource(name) ? $"variável de ambiente ({Mask(value)})"
+            : $"cofre do Windows ({Mask(value)})";
+        Console.WriteLine($"    {name,-22} {origin}");
+    }
+}
+
+/// <summary>Shows just enough of a secret to recognize it, never enough to use it.</summary>
+static string Mask(string value) =>
+    value.Length <= 4 ? new string('*', value.Length) : $"...{value[^4..]}";
+
+int SetCredential(string name)
+{
+    if (name.Length == 0 || name.StartsWith("--"))
+    {
+        log.LogError("--set-credential exige o nome, ex.: --set-credential AZURE_SPEECH_KEY");
+        return 1;
+    }
+
+    if (Console.IsInputRedirected)
+    {
+        log.LogError("--set-credential precisa de um terminal interativo para ler o valor sem ecoá-lo.");
+        return 1;
+    }
+
+    Console.Write($"{name}: ");
+    var value = ReadSecret();
+    Console.WriteLine();
+
+    if (string.IsNullOrWhiteSpace(value))
+    {
+        log.LogError("Valor vazio; nada foi salvo.");
+        return 1;
+    }
+
+    vault.Save(name, value);
+    Console.WriteLine($"{name} salvo cifrado em {UserPaths.ConfigDirectory}\\credentials.json ({Mask(value)}).");
+
+    if (EnvironmentSettings.Read(name) is not null)
+        Console.WriteLine(
+            $"Atenção: a variável de ambiente {name} existe e tem precedência sobre o valor salvo.");
+
+    return 0;
+}
+
+/// <summary>Reads a line without echoing it, so the key never lands in the scrollback.</summary>
+static string ReadSecret()
+{
+    var value = new System.Text.StringBuilder();
+    while (true)
+    {
+        var key = Console.ReadKey(intercept: true);
+        if (key.Key == ConsoleKey.Enter)
+            return value.ToString();
+        if (key.Key == ConsoleKey.Backspace)
+        {
+            if (value.Length > 0)
+                value.Length--;
+            continue;
+        }
+        if (!char.IsControl(key.KeyChar))
+            value.Append(key.KeyChar);
+    }
+}
+
+void PrintHelp() => Console.WriteLine("""
+    Polyglotta — dublagem simultânea em chamadas
+
+      --list-devices                 lista dispositivos de captura e reprodução
+      --list-voices [locale]         lista as vozes do Azure (HD primeiro)
+      --check-audio [segundos]       testa mic, loopback e saídas sem usar a nuvem
+
+      --provider azure|gemini        provedor de tradução (ADR-0006)
+      --from pt-BR  --to en-US       par de idiomas
+      --voice male|female|<nome>     voz que o interlocutor ouve
+      --voice-in male|female|<nome>  voz que você ouve
+      --mic / --loopback / --phones  dispositivos, por nome (fragmento) ou id
+
+      --show-config                  mostra a configuração efetiva e as credenciais
+      --save-config                  grava as opções acima como configuração padrão
+      --set-credential NOME          salva uma chave cifrada (não ecoa o valor)
+      --forget-credential NOME       remove a chave salva
+
+    Sem argumentos, usa a configuração salva. Opções de linha de comando têm
+    precedência sobre o arquivo; variáveis de ambiente têm precedência sobre as
+    credenciais salvas.
+    """);
+
+// -----------------------------------------------------------------------------
 // --check-audio: proves the device setup end to end without touching the cloud.
 // Reads the microphone and the loopback tap, then plays a short tone on each
 // output so the whole path can be verified before a real call.
-// ---------------------------------------------------------------------------
-async Task<int> CheckAudioAsync()
+// -----------------------------------------------------------------------------
+async Task<int> CheckAudioAsync(SessionPlan p)
 {
-    var seconds = int.TryParse(Arg("--check-audio", "8"), out var s) ? Math.Clamp(s, 3, 60) : 8;
+    var raw = Arg("--check-audio", "8");
+    var seconds = int.TryParse(raw, out var s) ? Math.Clamp(s, 3, 60) : 8;
 
-    Console.WriteLine($"\nMicrofone : {mic.Name}");
-    Console.WriteLine($"Loopback  : {loopback.Name}");
-    Console.WriteLine($"Fone      : {phones.Name}");
-    Console.WriteLine($"Mic virtual: {cable.Name}\n");
+    Console.WriteLine($"\nMicrofone : {p.Microphone.Name}");
+    Console.WriteLine($"Loopback  : {p.Loopback.Name}");
+    Console.WriteLine($"Fone      : {p.Phones.Name}");
+    Console.WriteLine($"Mic virtual: {p.VirtualMic.Name}\n");
     Console.WriteLine($"FALE AO MICROFONE pelos próximos {seconds}s (e deixe algo tocando no loopback).\n");
 
-    await using var micCapture = new WasapiMicCapture(mic.Id);
-    await using var loopCapture = new WasapiLoopbackSystemCapture(loopback.Id);
+    await using var micCapture = platform.CreateMicrophoneCapture(p.Microphone.Id);
+    await using var loopCapture = platform.CreateLoopbackCapture(p.Loopback.Id);
     await micCapture.StartAsync();
     await loopCapture.StartAsync();
 
@@ -249,12 +361,12 @@ async Task<int> CheckAudioAsync()
     await loopCapture.StopAsync();
 
     Console.WriteLine();
-    Report("Microfone", mic.Name, micFrames, micVoiced, micPeak);
-    Report("Loopback", loopback.Name, loopFrames, loopVoiced, loopPeak);
+    Report("Microfone", p.Microphone.Name, micFrames, micVoiced, micPeak);
+    Report("Loopback", p.Loopback.Name, loopFrames, loopVoiced, loopPeak);
 
     Console.WriteLine("\nTocando 1 s de tom em cada saída...");
-    await PlayToneAsync(phones, "você deve ouvir no fone");
-    await PlayToneAsync(cable, "vai para o Meet/Teams como microfone");
+    await PlayToneAsync(p.Phones, "você deve ouvir no fone");
+    await PlayToneAsync(p.VirtualMic, "vai para o Meet/Teams como microfone");
     Console.WriteLine("\nPronto.");
     return micVoiced > 0 ? 0 : 1;
 
@@ -278,7 +390,7 @@ async Task<int> CheckAudioAsync()
             Console.WriteLine($"{label}: OK — \"{device}\", {voiced} de {frames} frames com voz, pico {peak / short.MaxValue:P2}.");
     }
 
-    static async Task PlayToneAsync(AudioDeviceInfo device, string hint)
+    async Task PlayToneAsync(AudioDeviceInfo device, string hint)
     {
         Console.WriteLine($"  {device.Name} ({hint})");
         var pcm = new byte[AudioFrame.SampleRate * 2]; // 1 s, 16-bit mono
@@ -287,7 +399,7 @@ async Task<int> CheckAudioAsync()
             var sample = (short)(8000 * Math.Sin(2 * Math.PI * 440 * i / AudioFrame.SampleRate));
             BitConverter.TryWriteBytes(pcm.AsSpan(i * 2), sample);
         }
-        await using var render = new WasapiRenderDevice(device.Id);
+        await using var render = platform.CreateRenderDevice(device.Id);
         await render.StartAsync();
         render.Enqueue(pcm);
         await Task.Delay(1400);

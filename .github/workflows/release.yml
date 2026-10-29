@@ -1,0 +1,96 @@
+# Publicação por tag (ADR-0011): "git tag releases/0.2.0 && git push origin releases/0.2.0".
+# A tag é a fonte da versão — nenhum .csproj traz número escrito à mão.
+name: release
+
+on:
+  push:
+    tags: ["releases/*"]
+
+permissions:
+  contents: write
+
+defaults:
+  run:
+    shell: pwsh
+
+jobs:
+  release:
+    runs-on: windows-2025
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Versão a partir da tag
+        id: version
+        run: |
+          # "releases/*" casa um único segmento, porque o glob do Actions não atravessa
+          # a barra: ref_name chega como "releases/1.2.3" e o prefixo sai por regex.
+          $full = "${{ github.ref_name }}" -replace '^releases/', ''
+          $core = ($full -split '-')[0]
+          if ($core -notmatch '^\d+\.\d+\.\d+$') {
+            throw "Tag '${{ github.ref_name }}' fora do formato esperado: use releases/MAJOR.MINOR.PATCH, com sufixo opcional (releases/0.2.0-beta1)."
+          }
+          # full vai no nome do arquivo e no AppVersion; core no VersionInfo do .exe,
+          # que só aceita números.
+          "full=$full" >> $env:GITHUB_OUTPUT
+          "core=$core" >> $env:GITHUB_OUTPUT
+          if ($full -ne $core) { "prerelease=true" >> $env:GITHUB_OUTPUT } else { "prerelease=false" >> $env:GITHUB_OUTPUT }
+
+      # A imagem windows-2025 já traz os SDKs .NET 9 e 10 e o Inno Setup 6;
+      # não há passo de instalação de ferramenta.
+      - name: Test
+        run: dotnet test src/Polyglotta.sln -c Release
+
+      # Self-contained e sem trimming: o SDK do Azure Speech carrega binários nativos e o
+      # Avalonia usa reflexão — um trim quebrado só apareceria em runtime (ADR-0011).
+      # Bandeja e CLI de diagnóstico vão para a mesma pasta e compartilham o runtime.
+      - name: Publish
+        run: |
+          $v = "${{ steps.version.outputs.full }}"
+          dotnet publish src/Polyglotta.Tray/Polyglotta.Tray.csproj -c Release -r win-x64 --self-contained true -p:Version=$v -o publish
+          if ($LASTEXITCODE -ne 0) { throw "publish da bandeja falhou" }
+          dotnet publish src/Polyglotta.Cli/Polyglotta.Cli.csproj -c Release -r win-x64 --self-contained true -p:Version=$v -o publish
+          if ($LASTEXITCODE -ne 0) { throw "publish do CLI falhou" }
+          # SkiaSharp e HarfBuzz trazem .pdb nativos de ~100 MB. Medido: 254 MB com
+          # eles, 154 MB sem. Quem instala não depura o Skia.
+          Remove-Item publish\*.pdb -ErrorAction SilentlyContinue
+
+      - name: Instalador
+        run: |
+          $iscc = (Get-Command iscc.exe -ErrorAction SilentlyContinue).Source
+          if (-not $iscc) { $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" }
+          if (-not (Test-Path $iscc)) { throw "ISCC.exe não encontrado na imagem do runner." }
+          & $iscc /DAppVersion=${{ steps.version.outputs.full }} /DVersionInfo=${{ steps.version.outputs.core }} installer\Polyglotta.iss
+          if ($LASTEXITCODE -ne 0) { throw "ISCC falhou" }
+
+      - name: Zip
+        run: |
+          Compress-Archive -Path publish\* -DestinationPath "Polyglotta-${{ steps.version.outputs.full }}-win-x64.zip" -Force
+
+      - name: GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $v = "${{ steps.version.outputs.full }}"
+          $notes = @"
+          Instalação por usuário, sem administrador.
+
+          O instalador não é assinado: o SmartScreen vai avisar na primeira execução — em
+          "Mais informações", "Executar assim mesmo".
+
+          O microfone virtual VB-CABLE é instalação separada (https://vb-audio.com/Cable/).
+          O instalador avisa se não encontrar.
+
+          O .zip é a mesma aplicação sem instalador, para quem preferir descompactar — mas
+          mover a pasta depois quebra o início automático, que grava o caminho do executável.
+          "@
+          $ghArgs = @(
+            "release", "create", "${{ github.ref_name }}",
+            "installer\out\Polyglotta-$v-setup.exe",
+            "Polyglotta-$v-win-x64.zip",
+            "--title", "Polyglotta $v",
+            "--notes", $notes
+          )
+          if ("${{ steps.version.outputs.prerelease }}" -eq "true") { $ghArgs += "--prerelease" }
+          & gh $ghArgs
+          if ($LASTEXITCODE -ne 0) { throw "gh release create falhou" }

@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>14</LangVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Polyglotta.Core\Polyglotta.Core.csproj" />
+    <ProjectReference Include="..\Polyglotta.Translation.Azure\Polyglotta.Translation.Azure.csproj" />
+    <ProjectReference Include="..\Polyglotta.Translation.Gemini\Polyglotta.Translation.Gemini.csproj" />
+  </ItemGroup>
+</Project>

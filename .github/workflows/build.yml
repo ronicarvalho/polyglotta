@@ -1,0 +1,30 @@
+# Portão da main (ADR-0011): todo merge e todo PR compilam e passam nos testes.
+# Quem publica é o release.yml, disparado por tag.
+name: build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+defaults:
+  run:
+    shell: pwsh
+
+jobs:
+  build:
+    runs-on: windows-2025
+
+    steps:
+      - uses: actions/checkout@v7
+
+      # A imagem windows-2025 já traz os SDKs .NET 9 e 10; não há passo de instalação.
+      - name: Restore
+        run: dotnet restore src/Polyglotta.sln
+
+      - name: Build
+        run: dotnet build src/Polyglotta.sln -c Release --no-restore
+
+      - name: Test
+        run: dotnet test src/Polyglotta.sln -c Release --no-build

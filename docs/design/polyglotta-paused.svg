@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <defs>
+    <linearGradient id="gBack" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#B8BCC4"/><stop offset="1" stop-color="#6E7580"/></linearGradient>
+    <linearGradient id="gFront" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8A9099"/><stop offset="1" stop-color="#464C56"/></linearGradient>
+    <clipPath id="cutBack"><path clip-rule="evenodd" d="M0 0 H32 V32 H0 Z M15 8 A7 7 0 0 0 8 15 V21 A7 7 0 0 0 15 28 H25 A7 7 0 0 0 32 21 V15 A7 7 0 0 0 25 8 Z"/></clipPath>
+    
+  </defs>
+  <path d="M7 2 H17 A5 5 0 0 1 22 7 V13 A5 5 0 0 1 17 18 H8 L2 24 V7 A5 5 0 0 1 7 2 Z" fill="url(#gBack)" clip-path="url(#cutBack)"/>
+  <path d="M15 10 H25 A5 5 0 0 1 30 15 V31 L24 26 H15 A5 5 0 0 1 10 21 V15 A5 5 0 0 1 15 10 Z" fill="url(#gFront)"/>
+  <!-- onda sonora (coordenadas pares: em 16px cada barra vira exatamente 1px) -->
+  <rect x="14" y="16" width="2" height="4" rx="1" fill="#F3F4F6" fill-opacity="0.6"/>
+  <rect x="18" y="14" width="2" height="8" rx="1" fill="#F3F4F6"/>
+  <rect x="22" y="16" width="2" height="4" rx="1" fill="#F3F4F6" fill-opacity="0.6"/>
+  
+</svg>

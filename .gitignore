@@ -7,3 +7,4 @@ obj/
 appsettings.local.json
 .env
 session.bat
+publish/

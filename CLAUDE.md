@@ -17,7 +17,10 @@ Latência alvo: 1,5–3s ponta a ponta ("tradução consecutiva rápida", não i
 - **NAudio 3.x** para WASAPI (captura, loopback, render) — ADR-0004; API de builders (`WasapiRecorderBuilder`/`WasapiPlayerBuilder`), classes 2.x obsoletas são erro de build — ADR-0005.
 - **VB-Cable** como microfone virtual na v1; NÃO escrever driver de áudio — ADR-0002.
 - **Azure Speech Translation** (speech-to-speech streaming) como provedor v1 — ADR-0003.
-- Toda a lógica portável fica em `Polyglotta.Core` atrás de interfaces; código de plataforma isolado em `Polyglotta.Audio.Windows` — ADR-0004.
+- Toda a lógica portável fica em `Polyglotta.Core` atrás de interfaces; código de plataforma isolado em `Polyglotta.Audio.Windows` e `Polyglotta.Security.Windows` — ADR-0004.
+- **Agente de bandeja na sessão do usuário**, iniciado no logon — NÃO é serviço do Windows (sessão 0 não tem os endpoints de áudio do usuário) — ADR-0007.
+- **Avalonia** para bandeja e configuração, no mesmo processo do pipeline; Electron recusado — ADR-0008.
+- **Credenciais** por `ICredentialStore`: variável de ambiente tem precedência, senão cofre do SO (DPAPI no Windows) — ADR-0009.
 
 Antes de qualquer decisão arquitetural nova, leia `docs/adr/` e proponha um ADR (use `/new-adr`).
 
@@ -26,11 +29,16 @@ Antes de qualquer decisão arquitetural nova, leia `docs/adr/` e proponha um ADR
 ```
 docs/prd/        PRDs — o que construir e por quê
 docs/adr/        ADRs — decisões arquiteturais (numeradas)
-src/Polyglotta.Core/                Interfaces + orquestração do pipeline (sem dependência de plataforma)
+src/Polyglotta.Core/                Interfaces + pipeline (sem dependência de plataforma)
+src/Polyglotta.Host/                Orquestração: settings, resolução de dispositivos, guardas, DubbingSession
 src/Polyglotta.Audio.Windows/       WASAPI/NAudio: mic, loopback, render no VB-Cable
+src/Polyglotta.Security.Windows/    DPAPI: credenciais cifradas por usuário
 src/Polyglotta.Translation.Azure/   Azure Speech SDK (TranslationRecognizer + síntese)
-src/Polyglotta.Cli/                 v0: console app que liga os dois pipelines
+src/Polyglotta.Translation.Gemini/  Gemini Live em modo tradução (ADR-0006)
+src/Polyglotta.Tray/                Avalonia: ícone de bandeja + tela de configuração
+src/Polyglotta.Cli/                 Console: mesmo mecanismo, para diagnóstico
 tests/Polyglotta.Core.Tests/        xUnit
+tests/Polyglotta.Host.Tests/        xUnit — SessionPlanner e SettingsStore (lógica pura)
 tests/Polyglotta.Audio.Windows.Tests/  xUnit — só lógica pura (CanonicalFramer); I/O de dispositivo é teste manual
 docs/review/     Revisões de código e status de cobertura do PRD
 ```
@@ -40,11 +48,13 @@ docs/review/     Revisões de código e status de cobertura do PRD
 ```bash
 dotnet build src/Polyglotta.sln
 dotnet test src/Polyglotta.sln
+dotnet run --project src/Polyglotta.Tray
 dotnet run --project src/Polyglotta.Cli -- --list-devices
+dotnet run --project src/Polyglotta.Cli -- --show-config
 dotnet run --project src/Polyglotta.Cli -- --from pt-BR --to en-US
 ```
 
-Variáveis de ambiente necessárias em runtime: `AZURE_SPEECH_KEY`, `AZURE_SPEECH_REGION`.
+Credenciais: `AZURE_SPEECH_KEY`/`AZURE_SPEECH_REGION` (ou `GEMINI_API_KEY`), por variável de ambiente ou salvas com `--set-credential` / pela tela de configuração.
 
 ## Convenções de áudio (críticas — ver skill audio-realtime)
 
@@ -65,3 +75,4 @@ Variáveis de ambiente necessárias em runtime: `AZURE_SPEECH_KEY`, `AZURE_SPEEC
 2. Decisão de arquitetura nova ou troca de dependência → ADR primeiro, código depois.
 3. Mudou comportamento descrito num PRD/ADR? Atualize o documento no mesmo commit.
 4. Commits pequenos, mensagens em inglês, formato convencional (`feat:`, `fix:`, `docs:`, `refactor:`).
+5. **Sem linha de co-autoria nas mensagens de commit.** A autoria do projeto é do usuário; o agente é ferramenta. Não adicionar `Co-Authored-By` nem `Generated with`.
