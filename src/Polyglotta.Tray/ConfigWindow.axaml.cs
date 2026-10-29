@@ -57,7 +57,7 @@ public partial class ConfigWindow : Window
         ProviderBox.ItemsSource = new[] { "azure", "gemini" };
         FromBox.ItemsSource = Locales;
         ToBox.ItemsSource = Locales;
-        ConfigPathText.Text = $"Configuração: {_app.SettingsPath}";
+        ConfigPathText.Text = $"Versão {AppVersion.Current}  ·  Configuração: {_app.SettingsPath}";
 
         LoadDevices();
         ApplySettings(_app.Settings);

@@ -6,13 +6,28 @@ Roda como um **agente de bandeja** na sua sessão do Windows (ADR-0007): ícone 
 
 Não há integração com o Meet, o Teams ou qualquer outro app: a tradução sai num microfone virtual, e **qualquer** aplicação que escolher esse microfone funciona.
 
+## Instalando
+
+Baixe o `Polyglotta-<versão>-setup.exe` mais recente em [Releases](https://github.com/ronicarvalho/polyglotta/releases).
+
+A instalação é **por usuário** e não pede administrador: vai para `%LocalAppData%\Programs\Polyglotta`, com atalho no menu Iniciar e entrada em "Aplicativos instalados". Não precisa ter o .NET na máquina — o runtime vai dentro do pacote (ordem de 60 MB de download, 155 MB em disco).
+
+Duas coisas o instalador **não** resolve, e avisa em vez de falhar depois:
+
+- **O VB-CABLE é instalação separada.** É driver de terceiro, pede administrador e não pode ser redistribuído, então o instalador procura e, se não achar, oferece o link. Sem ele a chamada não tem o que escutar.
+- **O instalador não é assinado.** O SmartScreen vai avisar na primeira execução: **Mais informações → Executar assim mesmo**. O ADR-0011 explica por que não assinamos (resumo: a via gerenciada barata não atende o Brasil, e a reputação do SmartScreen se constrói por downloads, não por certificado).
+
+Desinstalar remove os binários e a tarefa de início automático, e **mantém** `%AppData%\Polyglotta` — configuração e credenciais continuam lá se você reinstalar. Apague a pasta à mão para zerar.
+
 ## Pré-requisitos (Windows)
 
-1. .NET 9 SDK
+1. .NET 9 SDK — **só para rodar a partir do código**; quem instala pelo `setup.exe` não precisa
 2. [VB-Cable](https://vb-audio.com/Cable/) instalado (cria o microfone virtual "CABLE Input")
 3. Conta no provedor de tradução: Azure Speech (`AZURE_SPEECH_KEY`, `AZURE_SPEECH_REGION`) e/ou Gemini (`GEMINI_API_KEY`)
 
 ## Subindo
+
+Instalado, é o atalho **Polyglotta** no menu Iniciar. A partir do código:
 
 ```powershell
 dotnet run --project src/Polyglotta.Tray
@@ -89,7 +104,7 @@ Sem credenciais, ou com o catálogo fora do ar, as combos caem de volta nos dois
 
 **Já ativar a dublagem ao iniciar** faz o agente subir dublando, em vez de subir parado. Deixe desmarcado até confiar no arranjo de dispositivos.
 
-A aba também mostra onde fica o `config.json`. Os logs ficam em `%APPDATA%\Polyglotta\logs`, um arquivo por dia.
+A aba também mostra a versão em execução e onde fica o `config.json`. Os logs ficam em `%APPDATA%\Polyglotta\logs`, um arquivo por dia.
 
 ## Usando numa chamada
 
@@ -173,6 +188,34 @@ O ícone tem três estados: ativo, parado e com erro. A arte é vetorial e vive 
 ## Desenvolvimento com Claude Code
 
 Este repositório é preparado para desenvolvimento agêntico: contexto em `CLAUDE.md`, requisitos em `docs/prd/`, decisões em `docs/adr/`, manuais de bibliotecas em `docs/man`, skills do projeto em `.claude/skills/` e o comando `/new-adr` em `.claude/commands/`.
+
+## Publicando uma versão
+
+A versão vem da **tag**, não de um número escrito em `.csproj` (ADR-0011). As tags de publicação vivem sob `releases/`, sem o `v` — `releases/0.2.0`. Publicar é uma linha:
+
+```powershell
+git tag releases/0.2.0
+git push origin releases/0.2.0
+```
+
+A tag dispara `.github/workflows/release.yml`: roda os testes, publica self-contained `win-x64`, compila o instalador com o Inno Setup e cria o GitHub Release com o `setup.exe` e o `.zip`. Merge na `main` **não** publica — ali roda só build e teste (`build.yml`).
+
+O número aparece no log e na aba Instância; fora de uma versão publicada ele vale `0.0.0-dev`, que é como você sabe que aquele binário não saiu de uma tag.
+
+Para compilar o instalador aqui antes de taggear, é preciso o Inno Setup 6:
+
+```powershell
+winget install -e --id JRSoftware.InnoSetup
+```
+
+```powershell
+dotnet publish src/Polyglotta.Tray/Polyglotta.Tray.csproj -c Release -r win-x64 --self-contained true -p:Version=0.2.0 -o publish
+dotnet publish src/Polyglotta.Cli/Polyglotta.Cli.csproj -c Release -r win-x64 --self-contained true -p:Version=0.2.0 -o publish
+Remove-Item publish\*.pdb -ErrorAction SilentlyContinue
+& "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /DAppVersion=0.2.0 /DVersionInfo=0.2.0 installer\Polyglotta.iss
+```
+
+O instalador sai em `installer\out\Polyglotta-0.2.0-setup.exe`.
 
 ## Build e testes
 

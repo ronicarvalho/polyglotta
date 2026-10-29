@@ -62,7 +62,7 @@ public partial class App : Application
             _session.Faulted += (_, ex) => Dispatcher.UIThread.Post(() => OnFaulted(ex));
 
             BuildTray();
-            _log.LogInformation("Polyglotta na bandeja. Configuração: {Path}", _settingsStore.Path);
+            _log.LogInformation("Polyglotta {Version} na bandeja. Configuração: {Path}", AppVersion.Current, _settingsStore.Path);
 
             if (_settings.ActivateOnStartup)
                 _ = ActivateAsync();

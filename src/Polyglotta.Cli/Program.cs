@@ -100,6 +100,7 @@ if (args.Contains("--save-config"))
 
 if (args.Contains("--show-config"))
 {
+    Console.WriteLine($"Versão: {AppVersion.Current}");
     Console.WriteLine($"Arquivo: {settingsStore.Path}{(File.Exists(settingsStore.Path) ? "" : " (ainda não existe)")}");
     PrintConfig(settings);
     return 0;
