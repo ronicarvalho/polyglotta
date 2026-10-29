@@ -40,6 +40,13 @@ public sealed class DubbingPipeline : IAsyncDisposable
     /// </summary>
     public event EventHandler<Exception>? Faulted;
 
+    /// <summary>
+    /// Recognized speech and its translation, re-raised for whoever wants to show it
+    /// (RF-06). Raised on the provider's thread: a UI must marshal before touching
+    /// widgets, and must never do slow work here.
+    /// </summary>
+    public event EventHandler<TranscriptEvent>? Transcript;
+
     public DubbingPipeline(
         string name,
         IAudioCaptureDevice capture,
@@ -179,6 +186,8 @@ public sealed class DubbingPipeline : IAsyncDisposable
             Name, e.IsFinal ? "final" : "partial", e.SourceText, e.TranslatedText);
         if (e.IsFinal)
             Latency.OnFinalTranscript();
+
+        Transcript?.Invoke(this, e);
     }
 
     private void OnSynthesizedAudio(object? _, ReadOnlyMemory<byte> audio)

@@ -1,0 +1,185 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Polyglotta.Tray.ConfigWindow"
+        Title="Polyglotta — Configuração"
+        Width="720" Height="500"
+        MinWidth="640" MinHeight="440"
+        WindowStartupLocation="CenterScreen">
+
+  <Window.Styles>
+    <!-- O tema não garante o caption centralizado em todo botão; aqui garantimos. -->
+    <Style Selector="Button">
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+    <Style Selector="TabItem">
+      <Setter Property="FontSize" Value="14" />
+      <Setter Property="MinHeight" Value="38" />
+      <Setter Property="Padding" Value="14,6" />
+    </Style>
+    <!-- Rótulo da esquerda em cada linha de formulário. -->
+    <Style Selector="TextBlock.field">
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Margin" Value="0,6" />
+    </Style>
+    <Style Selector="TextBlock.hint">
+      <Setter Property="TextWrapping" Value="Wrap" />
+      <Setter Property="Opacity" Value="0.75" />
+      <Setter Property="FontSize" Value="12" />
+    </Style>
+  </Window.Styles>
+
+  <DockPanel Margin="16">
+
+    <!-- rodapé: estado + ações, sempre visível -->
+    <Border DockPanel.Dock="Bottom" Margin="0,12,0,0" Padding="0,12,0,0"
+            BorderBrush="#30808080" BorderThickness="0,1,0,0">
+      <Grid ColumnDefinitions="*,Auto,Auto,Auto">
+        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+          <TextBlock x:Name="StateText" FontWeight="SemiBold" Text="parado" />
+          <TextBlock x:Name="LatencyText" Opacity="0.7" FontSize="12" Text="" />
+        </StackPanel>
+        <Button Grid.Column="1" x:Name="ValidateButton" Content="Validar"
+                MinWidth="96" Margin="0,0,8,0" />
+        <Button Grid.Column="2" x:Name="SaveButton" Content="Salvar"
+                MinWidth="96" Margin="0,0,8,0" />
+        <Button Grid.Column="3" x:Name="ToggleButton" Content="Ativar"
+                Classes="accent" MinWidth="110" />
+      </Grid>
+    </Border>
+
+    <!-- pendências: acima das abas, porque valem para a tela inteira -->
+    <Border DockPanel.Dock="Top" x:Name="ProblemsPanel" IsVisible="False"
+            Margin="0,0,0,12"
+            Background="#22D97706" BorderBrush="#66D97706" BorderThickness="1"
+            CornerRadius="6" Padding="12">
+      <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="*,Auto">
+        <TextBlock Grid.Row="0" Grid.Column="0" x:Name="ProblemsTitle"
+                   Text="Pendências" FontWeight="SemiBold" VerticalAlignment="Center" />
+        <Button Grid.Row="0" Grid.Column="1" x:Name="CloseProblemsButton"
+                Content="✕" FontSize="12" Width="24" Height="24" Padding="0"
+                Background="Transparent" BorderThickness="0"
+                ToolTip.Tip="Fechar este aviso" />
+        <ItemsControl Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" x:Name="ProblemsList"
+                      Margin="0,6,0,0">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate>
+              <TextBlock Text="{Binding}" TextWrapping="Wrap" Margin="0,2" />
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </Grid>
+    </Border>
+
+    <TabControl x:Name="Tabs">
+
+      <TabItem Header="Dispositivos">
+        <!-- AllowAutoHide=False: a barra de rolagem ocupa espaço no layout em vez de
+             flutuar por cima das combos. -->
+        <ScrollViewer VerticalScrollBarVisibility="Auto" AllowAutoHide="False">
+          <StackPanel Spacing="10" Margin="12,14,12,12">
+            <TextBlock Classes="hint"
+                       Text="O áudio da chamada precisa tocar num dispositivo diferente do fone: é o que o loopback captura. O microfone virtual (CABLE Input) é escolhido sozinho." />
+            <Grid ColumnDefinitions="150,*" RowDefinitions="Auto,Auto,Auto">
+              <TextBlock Grid.Row="0" Grid.Column="0" Classes="field" Text="Microfone" />
+              <ComboBox Grid.Row="0" Grid.Column="1" x:Name="MicBox"
+                        HorizontalAlignment="Stretch" Margin="0,6" />
+
+              <TextBlock Grid.Row="1" Grid.Column="0" Classes="field" Text="Saída da chamada" />
+              <ComboBox Grid.Row="1" Grid.Column="1" x:Name="LoopbackBox"
+                        HorizontalAlignment="Stretch" Margin="0,6" />
+
+              <TextBlock Grid.Row="2" Grid.Column="0" Classes="field" Text="Fone" />
+              <ComboBox Grid.Row="2" Grid.Column="1" x:Name="PhonesBox"
+                        HorizontalAlignment="Stretch" Margin="0,6" />
+            </Grid>
+            <Button x:Name="RefreshDevicesButton" Content="Reler dispositivos"
+                    HorizontalAlignment="Left" MinWidth="150" />
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+
+      <TabItem Header="Tradução">
+        <ScrollViewer VerticalScrollBarVisibility="Auto" AllowAutoHide="False">
+          <StackPanel Spacing="10" Margin="12,14,12,12">
+            <Grid ColumnDefinitions="150,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto">
+              <TextBlock Grid.Row="0" Grid.Column="0" Classes="field" Text="Provedor" />
+              <ComboBox Grid.Row="0" Grid.Column="1" x:Name="ProviderBox" Width="220"
+                        HorizontalAlignment="Left" Margin="0,6" />
+
+              <TextBlock Grid.Row="1" Grid.Column="0" Classes="field" Text="Eu falo" />
+              <ComboBox Grid.Row="1" Grid.Column="1" x:Name="FromBox" Width="220"
+                        HorizontalAlignment="Left" Margin="0,6" />
+
+              <TextBlock Grid.Row="2" Grid.Column="0" Classes="field" Text="Ele ouve" />
+              <ComboBox Grid.Row="2" Grid.Column="1" x:Name="ToBox" Width="220"
+                        HorizontalAlignment="Left" Margin="0,6" />
+
+              <!-- Idiomas são do par de tradução; vozes são de quem fala. Coisas diferentes. -->
+              <Separator Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,12,0,8" />
+
+              <TextBlock Grid.Row="4" Grid.Column="0" Classes="field" Text="Vozes" />
+              <StackPanel Grid.Row="4" Grid.Column="1" Orientation="Horizontal"
+                          Spacing="8" Margin="0,6">
+                <TextBlock Text="que ele ouve" VerticalAlignment="Center" Opacity="0.75"
+                           Width="86" />
+                <ComboBox x:Name="VoiceOutBox" Width="268" />
+                <Button x:Name="PreviewOutButton" Content="Ouvir" MinWidth="78" />
+              </StackPanel>
+
+              <StackPanel Grid.Row="5" Grid.Column="1" Orientation="Horizontal"
+                          Spacing="8" Margin="0,6">
+                <TextBlock Text="que eu ouço" VerticalAlignment="Center" Opacity="0.75"
+                           Width="86" />
+                <ComboBox x:Name="VoiceInBox" Width="268" />
+                <Button x:Name="PreviewInButton" Content="Ouvir" MinWidth="78" />
+              </StackPanel>
+
+              <StackPanel Grid.Row="6" Grid.Column="1" Orientation="Horizontal"
+                          Spacing="8" Margin="0,4,0,0">
+                <TextBlock x:Name="VoiceStatus" Classes="hint" VerticalAlignment="Center" />
+                <Button x:Name="ReloadVoicesButton" Content="Recarregar vozes" MinWidth="130" />
+              </StackPanel>
+            </Grid>
+            <TextBlock x:Name="VoiceNote" IsVisible="False" Classes="hint"
+                       Text="O modo de tradução do Gemini não permite escolher a voz (ADR-0006); estes campos ficam sem efeito." />
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+
+      <TabItem Header="Credenciais">
+        <ScrollViewer VerticalScrollBarVisibility="Auto" AllowAutoHide="False">
+          <StackPanel Spacing="10" Margin="12,14,12,12">
+            <TextBlock Classes="hint"
+                       Text="Guardadas cifradas pelo Windows, só para este usuário nesta máquina. Uma variável de ambiente com o mesmo nome continua tendo precedência." />
+            <Grid ColumnDefinitions="*,Auto,Auto" RowDefinitions="Auto,Auto">
+              <ComboBox Grid.Row="0" Grid.Column="0" x:Name="CredentialNameBox"
+                        HorizontalAlignment="Stretch" Margin="0,0,8,8" />
+              <TextBox Grid.Row="1" Grid.Column="0" x:Name="CredentialValueBox"
+                       PasswordChar="•" PlaceholderText="valor" Margin="0,0,8,0" />
+              <Button Grid.Row="1" Grid.Column="1" x:Name="SaveCredentialButton"
+                      Content="Salvar" MinWidth="96" Margin="0,0,8,0" />
+              <Button Grid.Row="1" Grid.Column="2" x:Name="ForgetCredentialButton"
+                      Content="Remover" MinWidth="96" />
+            </Grid>
+            <TextBlock x:Name="CredentialStatus" FontSize="12" Opacity="0.85"
+                       TextWrapping="Wrap" />
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+
+      <TabItem Header="Instância">
+        <ScrollViewer VerticalScrollBarVisibility="Auto" AllowAutoHide="False">
+          <StackPanel Spacing="10" Margin="12,14,12,12">
+            <CheckBox x:Name="AutostartBox" Content="Iniciar o Polyglotta ao entrar no Windows" />
+            <CheckBox x:Name="ActivateOnStartupBox" Content="Já ativar a dublagem ao iniciar" />
+            <TextBlock x:Name="AutostartStatus" Classes="hint" />
+            <TextBlock x:Name="ConfigPathText" FontSize="11" Opacity="0.6" TextWrapping="Wrap"
+                       Margin="0,8,0,0" />
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+
+    </TabControl>
+  </DockPanel>
+</Window>

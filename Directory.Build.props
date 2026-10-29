@@ -1,0 +1,15 @@
+<Project>
+
+  <PropertyGroup>
+    <!-- ADR-0011: a versão vem da tag do Git no release (-p:Version=1.2.3).
+         Fora do release vale este valor, para que "0.0.0-dev" no log seja um
+         sinal claro de que o binário não saiu de uma versão publicada. -->
+    <Version Condition="'$(Version)' == ''">0.0.0-dev</Version>
+
+    <Product>Polyglotta</Product>
+    <Authors>Roni Carvalho</Authors>
+    <Company>Roni Carvalho</Company>
+    <Copyright>© Roni Carvalho</Copyright>
+  </PropertyGroup>
+
+</Project>

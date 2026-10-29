@@ -30,8 +30,19 @@ public sealed class AzureSpeechTranslator : ISpeechTranslator
     }
 
     public static AzureSpeechTranslator FromEnvironment() =>
-        new(EnvironmentSettings.Require("AZURE_SPEECH_KEY"),
-            EnvironmentSettings.Require("AZURE_SPEECH_REGION"));
+        FromCredentials(new EnvironmentCredentialStore());
+
+    /// <summary>
+    /// Builds from any credential source (ADR-0009): environment variable, OS vault,
+    /// or a chain of both. The variable names are unchanged.
+    /// </summary>
+    public static AzureSpeechTranslator FromCredentials(ICredentialStore credentials) =>
+        new(Require(credentials, "AZURE_SPEECH_KEY"),
+            Require(credentials, "AZURE_SPEECH_REGION"));
+
+    private static string Require(ICredentialStore credentials, string name) =>
+        credentials.Read(name)
+        ?? throw new InvalidOperationException($"{name} não configurado (variável de ambiente ou tela de configuração).");
 
     public async Task StartAsync(TranslatorOptions options, CancellationToken ct = default)
     {
