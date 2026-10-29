@@ -27,10 +27,12 @@ public partial class App : Application
     private ILoggerFactory _loggerFactory = null!;
     private ILogger _log = null!;
     private DubbingSession _session = null!;
+    private VoicePreview _preview = null!;
 
     private TrayIcon? _tray;
     private NativeMenuItem? _toggleItem;
     private ConfigWindow? _config;
+    private TranscriptWindow? _transcript;
     private PolyglottaSettings _settings = new();
 
     /// <summary>Latest transcript lines, for the configuration window to show (RF-06).</summary>
@@ -54,6 +56,7 @@ public partial class App : Application
 
             _settings = _settingsStore.Load();
             _session = new DubbingSession(_platform, _credentials, _loggerFactory);
+            _preview = new VoicePreview(_platform, _credentials);
             _session.StateChanged += (_, state) => Dispatcher.UIThread.Post(() => OnStateChanged(state));
             _session.Transcript += (_, t) => Transcripts.Add(t);
             _session.Faulted += (_, ex) => Dispatcher.UIThread.Post(() => OnFaulted(ex));
@@ -73,17 +76,21 @@ public partial class App : Application
     private void BuildTray()
     {
         _toggleItem = new NativeMenuItem("Ativar");
-        _toggleItem.Click += async (_, _) => await ToggleAsync();
+        _toggleItem.Click += async (_, _) => await GuardedAsync(ToggleAsync, "ativar/desativar");
 
         var configure = new NativeMenuItem("Configurar...");
-        configure.Click += (_, _) => ShowConfig();
+        configure.Click += (_, _) => Guarded(ShowConfig, "abrir a configuração");
+
+        var transcript = new NativeMenuItem("Transcrição...");
+        transcript.Click += (_, _) => Guarded(ShowTranscript, "abrir a transcrição");
 
         var quit = new NativeMenuItem("Fechar");
-        quit.Click += async (_, _) => await QuitAsync();
+        quit.Click += async (_, _) => await GuardedAsync(QuitAsync, "fechar");
 
         var menu = new NativeMenu();
         menu.Add(_toggleItem);
         menu.Add(configure);
+        menu.Add(transcript);
         menu.Add(new NativeMenuItemSeparator());
         menu.Add(quit);
 
@@ -97,9 +104,37 @@ public partial class App : Application
 
         // macOS does not raise Clicked (ADR-0008), so the menu is the only control path
         // there; on Windows a click opening the settings is the expected shortcut.
-        _tray.Clicked += (_, _) => ShowConfig();
+        _tray.Clicked += (_, _) => Guarded(ShowConfig, "abrir a configuração");
 
         TrayIcon.SetIcons(this, [_tray]);
+    }
+
+    /// <summary>
+    /// An exception escaping a tray handler takes the whole agent down with it — the
+    /// user is left with no icon and no message. Log it and stay alive instead.
+    /// </summary>
+    private void Guarded(Action action, string what)
+    {
+        try
+        {
+            action();
+        }
+        catch (Exception ex)
+        {
+            _log.LogError(ex, "Falha ao {What}.", what);
+        }
+    }
+
+    private async Task GuardedAsync(Func<Task> action, string what)
+    {
+        try
+        {
+            await action();
+        }
+        catch (Exception ex)
+        {
+            _log.LogError(ex, "Falha ao {What}.", what);
+        }
     }
 
     private static WindowIcon LoadIcon(string state) =>
@@ -193,12 +228,29 @@ public partial class App : Application
         _config.OnSessionStateChanged(_session.State);
     }
 
+    private void ShowTranscript()
+    {
+        if (_transcript is null)
+        {
+            _transcript = new TranscriptWindow(this);
+            _transcript.Closing += (_, e) =>
+            {
+                e.Cancel = true;
+                _transcript.Hide();
+            };
+        }
+
+        _transcript.Show();
+        _transcript.Activate();
+    }
+
     // --- services the window needs ------------------------------------------------
 
     public IReadOnlyList<Core.Audio.AudioDeviceInfo> ListDevices() => _platform.Devices.ListDevices();
     public ChainedCredentialStore Credentials => _credentials;
     public DpapiCredentialStore Vault => _vault;
     public DubbingSession Session => _session;
+    public VoicePreview Preview => _preview;
 
     public PolyglottaSettings Settings
     {

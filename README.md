@@ -41,9 +41,13 @@ Para persistir entre sessões: `setx AZURE_SPEECH_REGION eastus` (abra um termin
 dotnet run --project src/Polyglotta.Tray
 ```
 
-Sobe sem console e sem janela: procure o ícone de dois balões ao lado do relógio. Ele começa **desativado** — abrir o microfone sozinho no logon não é comportamento que se assume. Em **Configurar** ficam dispositivos, idiomas, vozes, credenciais, a transcrição ao vivo e o p95 de latência; marcando "Iniciar ao entrar no Windows" ele cria uma tarefa agendada de logon (sem exigir administrador).
+Sobe sem console e sem janela: procure o ícone de dois balões ao lado do relógio. Ele começa **desativado** — abrir o microfone sozinho no logon não é comportamento que se assume. O menu tem **Ativar/Desativar**, **Configurar**, **Transcrição** e **Fechar**.
+
+Em **Configurar** há quatro abas — Dispositivos, Tradução, Credenciais e Instância — com o estado da sessão, o p95 de latência e as pendências de validação sempre à vista. Marcando "Iniciar o Polyglotta ao entrar no Windows", na aba Instância, ele cria uma tarefa agendada de logon (sem exigir administrador). **Transcrição** abre uma janela à parte com o que foi reconhecido e traduzido nos dois sentidos — ela acompanha a conversa com a configuração fechada.
 
 A configuração fica em `%APPDATA%\Polyglotta\config.json` e os logs em `%APPDATA%\Polyglotta\logs`. O CLI lê o mesmo arquivo, então dá para configurar num e rodar no outro.
+
+O ícone tem três estados — ativo, parado e com erro. A arte é vetorial e vive em `docs/design/*.svg`; `src/Polyglotta.Tray/Assets/*.png` e o `.ico` do executável são rasterizações dela. Para mudar o ícone, mude o SVG e re-renderize, não edite o PNG.
 
 ## Rodando pelo CLI
 
@@ -103,6 +107,8 @@ dotnet run --project src/Polyglotta.Cli -- --list-voices pt-BR    # um locale es
 ```
 
 Vozes marcadas com `HD` na listagem são as de alta definição. O plano gratuito (F0) **não** reduz a qualidade da voz — ele limita volume de caracteres e concorrência.
+
+Na bandeja, a aba **Tradução** faz o mesmo pela tela: as duas combos trazem o catálogo do seu recurso para o idioma de cada lado, com os apelidos `Feminina`/`Masculina` no topo — eles continuam seguindo o catálogo, enquanto escolher um nome concreto fixa aquela voz. O botão **Ouvir** sintetiza uma frase na língua da voz e toca no fone configurado, usando a voz **efetiva**: se o apelido estiver selecionado, você ouve exatamente a voz que a chamada usaria. Sem credenciais, ou com o catálogo fora do ar, a tela cai de volta nos dois apelidos e diz por quê.
 
 ### Testando os dispositivos sem gastar Azure
 

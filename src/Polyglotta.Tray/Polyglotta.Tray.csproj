@@ -9,6 +9,9 @@
     <!-- O código-behind preenche as listas; não há ViewModel para tipar bindings compilados. -->
     <AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>
     <ApplicationIcon>Assets\icon-active.ico</ApplicationIcon>
+    <!-- AVLN3001: a ConfigWindow só é construída por código (recebe o App), nunca
+         carregada por URI, então não tem construtor público sem parâmetros. -->
+    <NoWarn>$(NoWarn);AVLN3001</NoWarn>
   </PropertyGroup>
   <ItemGroup>
     <AvaloniaResource Include="Assets\**" />

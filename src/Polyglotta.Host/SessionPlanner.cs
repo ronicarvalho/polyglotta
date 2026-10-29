@@ -83,6 +83,14 @@ public static class SessionPlanner
     /// Resolves one selection. Name first (it survives id changes), then the exact id,
     /// then the system default when nothing was chosen.
     /// </summary>
+    /// <summary>
+    /// Resolve uma única seleção, para quem precisa de um endpoint só e não de um plano
+    /// inteiro — a amostra de voz precisa do fone, mas não do VB-Cable nem do microfone.
+    /// </summary>
+    public static AudioDeviceInfo? ResolveOne(
+        DeviceSelection selection, AudioDeviceKind kind, IReadOnlyList<AudioDeviceInfo> devices) =>
+        Resolve(selection, kind, "device", devices, []);
+
     private static AudioDeviceInfo? Resolve(
         DeviceSelection selection,
         AudioDeviceKind kind,

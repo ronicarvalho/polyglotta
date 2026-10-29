@@ -31,11 +31,11 @@ Profissional brasileiro em reunião com cliente/time nos EUA. Entra na chamada, 
 | RF-01 | Listar dispositivos de captura e reprodução do sistema |
 | RF-02 | Pipeline outbound: mic → tradução → mic virtual |
 | RF-03 | Pipeline inbound: loopback → tradução → fone |
-| RF-04 | Seleção de par de idiomas (mín. pt-BR↔en-US) e voz TTS. *Com o provedor Gemini (ADR-0006) a voz não é selecionável — limitação do modo de tradução, registrada para decisão após a comparação.* |
+| RF-04 | Seleção de par de idiomas (mín. pt-BR↔en-US) e voz TTS, escolhida no catálogo ao vivo do recurso e demonstrável na tela (uma frase na língua da voz, tocada no fone). *Com o provedor Gemini (ADR-0006) a voz não é selecionável — limitação do modo de tradução, registrada para decisão após a comparação.* |
 | RF-05 | Mute do pipeline outbound (falar sem traduzir) |
-| RF-06 | Exibir transcrição parcial/final e tradução em tempo real (log na v0) |
+| RF-06 | Exibir transcrição parcial/final e tradução em tempo real (log no CLI; janela própria na bandeja) |
 | RF-07 | Reconexão automática do serviço de tradução em caso de queda |
-| RF-08 | Operação residente na sessão do usuário, com ícone de bandeja: ativar, desativar, configurar e fechar (ADR-0007/ADR-0008) |
+| RF-08 | Operação residente na sessão do usuário, com ícone de bandeja: ativar, desativar, configurar, transcrição e fechar (ADR-0007/ADR-0008) |
 | RF-09 | Configuração persistida por usuário (provedor, dispositivos, idiomas, vozes) e credenciais guardadas com cifra do SO (ADR-0009) |
 
 ## Requisitos não funcionais

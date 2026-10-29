@@ -78,7 +78,7 @@ internal sealed class FileLoggerProvider : ILoggerProvider
 
             var line = new StringBuilder()
                 .Append(DateTime.Now.ToString("HH:mm:ss.fff "))
-                .Append(logLevel.ToString().ToLowerInvariant().PadRight(11))
+                .Append(logLevel.ToString().ToLowerInvariant().PadRight(12))
                 .Append(category)
                 .Append(": ")
                 .AppendLine(formatter(state, exception));

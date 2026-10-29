@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <defs>
+    <linearGradient id="gBack" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7DF28A"/><stop offset="0.25" stop-color="#22E0D8"/><stop offset="0.5" stop-color="#2A8CFF"/><stop offset="0.75" stop-color="#8B2BF0"/><stop offset="1" stop-color="#F52BD6"/></linearGradient>
+    <linearGradient id="gFront" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#B51BB8"/><stop offset="0.4" stop-color="#F0305C"/><stop offset="0.75" stop-color="#FF7A3C"/><stop offset="1" stop-color="#FFB32E"/></linearGradient>
+    <clipPath id="cutBack"><path clip-rule="evenodd" d="M0 0 H32 V32 H0 Z M15 8 A7 7 0 0 0 8 15 V21 A7 7 0 0 0 15 28 H25 A7 7 0 0 0 32 21 V15 A7 7 0 0 0 25 8 Z M32.5 5 A5.5 5.5 0 1 0 21.5 5 A5.5 5.5 0 1 0 32.5 5 Z"/></clipPath>
+    <clipPath id="cutFront"><path clip-rule="evenodd" d="M0 0 H32 V32 H0 Z M32.5 5 A5.5 5.5 0 1 0 21.5 5 A5.5 5.5 0 1 0 32.5 5 Z"/></clipPath>
+  </defs>
+  <path d="M7 2 H17 A5 5 0 0 1 22 7 V13 A5 5 0 0 1 17 18 H8 L2 24 V7 A5 5 0 0 1 7 2 Z" fill="url(#gBack)" clip-path="url(#cutBack)"/>
+  <path d="M15 10 H25 A5 5 0 0 1 30 15 V31 L24 26 H15 A5 5 0 0 1 10 21 V15 A5 5 0 0 1 15 10 Z" fill="url(#gFront)" clip-path="url(#cutFront)"/>
+  <!-- onda sonora (coordenadas pares: em 16px cada barra vira exatamente 1px) -->
+  <rect x="14" y="16" width="2" height="4" rx="1" fill="#FFFFFF" fill-opacity="0.8"/>
+  <rect x="18" y="14" width="2" height="8" rx="1" fill="#FFFFFF"/>
+  <rect x="22" y="16" width="2" height="4" rx="1" fill="#FFFFFF" fill-opacity="0.8"/>
+  <circle cx="27" cy="5" r="4" fill="#FF3B30"/>
+</svg>
