@@ -2,7 +2,7 @@
 
 Dublagem simultânea PT↔EN para chamadas no Meet/Teams. Você fala português, o outro lado ouve inglês sintetizado — e vice-versa.
 
-Roda como um **agente de bandeja** na sua sessão do Windows (ADR-0007): ícone ao lado do relógio com **Ativar**, **Desativar**, **Configurar** e **Fechar**. O mesmo mecanismo continua disponível pelo CLI, que é o caminho para diagnóstico.
+Roda como um **agente de bandeja** na sua sessão do Windows (ADR-0007): ícone ao lado do relógio com **Ativar/Desativar**, **Configurar**, **Transcrição** e **Fechar**. O CLI continua existindo e usa o mesmo mecanismo, mas o caminho normal é a interface; o CLI é para diagnóstico.
 
 Não há integração com o Meet, o Teams ou qualquer outro app: a tradução sai num microfone virtual, e **qualquer** aplicação que escolher esse microfone funciona.
 
@@ -10,115 +10,151 @@ Não há integração com o Meet, o Teams ou qualquer outro app: a tradução sa
 
 1. .NET 9 SDK
 2. [VB-Cable](https://vb-audio.com/Cable/) instalado (cria o microfone virtual "CABLE Input")
-3. Credenciais do provedor de tradução: Azure Speech (`AZURE_SPEECH_KEY`, `AZURE_SPEECH_REGION`) e/ou Gemini (`GEMINI_API_KEY`)
+3. Conta no provedor de tradução: Azure Speech (`AZURE_SPEECH_KEY`, `AZURE_SPEECH_REGION`) e/ou Gemini (`GEMINI_API_KEY`)
 
-### Configurando as chaves
-
-Pela bandeja: **Configurar → Credenciais**. O valor é gravado cifrado com DPAPI em `%APPDATA%\Polyglotta\credentials.json` — decifrável só por você, nesta máquina (ADR-0009).
-
-Pelo CLI, sem ecoar o valor no terminal:
-
-```powershell
-dotnet run --project src/Polyglotta.Cli -- --set-credential AZURE_SPEECH_KEY
-dotnet run --project src/Polyglotta.Cli -- --set-credential AZURE_SPEECH_REGION
-dotnet run --project src/Polyglotta.Cli -- --show-config
-```
-
-Variáveis de ambiente continuam funcionando e **têm precedência** sobre o que estiver salvo:
-
-```powershell
-$env:AZURE_SPEECH_KEY = 'cole-a-chave-aqui'
-$env:AZURE_SPEECH_REGION = 'eastus'
-```
-
-Para persistir entre sessões: `setx AZURE_SPEECH_REGION eastus` (abra um terminal novo depois).
-
-> **Atenção:** no `cmd.exe`, `set VAR="eastus"` guarda as **aspas dentro do valor** e a conexão falha com um erro de DNS confuso (`wss://"eastus".stt.speech…`). Use `set VAR=eastus`, sem aspas. O app remove aspas e espaços sobrando e loga a região no startup (`Azure region: eastus`) — confira essa linha se houver erro de conexão.
-
-## Rodando na bandeja
+## Subindo
 
 ```powershell
 dotnet run --project src/Polyglotta.Tray
 ```
 
-Sobe sem console e sem janela: procure o ícone de dois balões ao lado do relógio. Ele começa **desativado** — abrir o microfone sozinho no logon não é comportamento que se assume. O menu tem **Ativar/Desativar**, **Configurar**, **Transcrição** e **Fechar**.
+Sobe sem console e sem janela: procure o ícone de dois balões ao lado do relógio. Ele começa **desativado** — abrir o seu microfone sozinho no logon não é comportamento que se assume. Clicar no ícone, ou escolher **Configurar**, abre a tela.
 
-Em **Configurar** há quatro abas — Dispositivos, Tradução, Credenciais e Instância — com o estado da sessão, o p95 de latência e as pendências de validação sempre à vista. Marcando "Iniciar o Polyglotta ao entrar no Windows", na aba Instância, ele cria uma tarefa agendada de logon (sem exigir administrador). **Transcrição** abre uma janela à parte com o que foi reconhecido e traduzido nos dois sentidos — ela acompanha a conversa com a configuração fechada.
+## Configurando pela interface
 
-A configuração fica em `%APPDATA%\Polyglotta\config.json` e os logs em `%APPDATA%\Polyglotta\logs`. O CLI lê o mesmo arquivo, então dá para configurar num e rodar no outro.
+A tela tem quatro abas. Na primeira vez, a ordem que funciona é **Credenciais → Dispositivos → Tradução**, porque a lista de vozes depende da chave estar no lugar.
 
-O ícone tem três estados — ativo, parado e com erro. A arte é vetorial e vive em `docs/design/*.svg`; `src/Polyglotta.Tray/Assets/*.png` e o `.ico` do executável são rasterizações dela. Para mudar o ícone, mude o SVG e re-renderize, não edite o PNG.
+O rodapé mostra o estado da sessão e, enquanto ela roda, a latência p95 de cada pipeline. Os três botões fazem coisas diferentes:
 
-## Rodando pelo CLI
+| Botão | O que faz |
+|---|---|
+| **Validar** | Só confere. Não grava nada. |
+| **Salvar** | Grava a configuração e confere. |
+| **Ativar** | Grava e sobe a dublagem. É o equivalente ao comando de linha. |
 
-```bash
+O resultado da conferência aparece num aviso no topo da tela, com um **✕** para dispensá-lo. O título diz o resultado — "Tudo certo" ou "N pendências" —, então dá para saber se vale ler antes de ler.
+
+> Mexer nos campos não muda nada sozinho: enquanto você não clicar em **Salvar** (ou em **Ativar**, que salva antes de subir), vale o que estava gravado.
+
+### Aba Credenciais
+
+Escolha o nome no combo — ele muda conforme o provedor selecionado na aba Tradução —, cole o valor e clique em **Salvar**. O valor é gravado cifrado com DPAPI em `%APPDATA%\Polyglotta\credentials.json`, decifrável só por você, nesta máquina (ADR-0009).
+
+A linha de status abaixo diz de onde a credencial está vindo e mostra só os quatro últimos caracteres. Se disser **"vindo da variável de ambiente"**, é porque existe uma variável com esse nome, e **ela tem precedência** sobre o que você salvar aqui — útil saber antes de passar meia hora procurando por que a chave nova não fez efeito.
+
+> **Atenção com o `cmd.exe`:** `set VAR="eastus"` guarda as **aspas dentro do valor** e a conexão falha com um erro de DNS confuso (`wss://"eastus".stt.speech…`). Use `set VAR=eastus`, sem aspas. O app remove aspas e espaços sobrando, mas nem todo programa remove.
+
+### Aba Dispositivos
+
+São três escolhas, e a relação entre elas é o que faz a coisa funcionar:
+
+| Campo | O que é |
+|---|---|
+| **Microfone** | Onde você fala. |
+| **Saída da chamada** | Onde o Meet/Teams **toca** o áudio do interlocutor. É o que o app captura por loopback. |
+| **Fone** | Onde **você** ouve a tradução. |
+
+**Saída da chamada e Fone precisam ser dispositivos diferentes.** Se forem o mesmo, a tradução que o app reproduz seria recapturada e retraduzida em loop — e o app se recusa a iniciar, em vez de produzir esse resultado. O arranjo típico é configurar o Meet/Teams para tocar numa saída secundária (um monitor por HDMI, por exemplo) e deixar o fone só para você.
+
+O microfone virtual **não se escolhe**: o app procura sozinho o "CABLE Input", porque ele é o destino fixo da tradução de saída. Os dois lados do cabo virtual continuam aparecendo nas listas, junto com todo o resto que o Windows enumera, mas usar um deles aqui é erro: "CABLE Input" como fone ou como saída da chamada, e "CABLE Output" como microfone, fazem o app traduzir a própria saída. A validação recusa os três casos com a explicação.
+
+**Reler dispositivos** atualiza as listas sem fechar a tela, para quando você pluga um fone no meio da configuração.
+
+> Dispositivos **desabilitados** no Windows não aparecem na lista e não podem ser usados. Se o seu microfone sumiu, abra `mmsys.cpl` → aba Gravação → botão direito → *Mostrar dispositivos desativados* → Ativar.
+
+A configuração guarda **nome e id** de cada dispositivo, tentando o nome primeiro: id de endpoint muda em troca de hardware e em atualização do Windows, e já mudou duas vezes neste projeto.
+
+### Aba Tradução
+
+**Provedor** (`azure` ou `gemini`), **Eu falo** (seu idioma) e **Ele ouve** (o idioma que sai para o outro lado).
+
+Abaixo do separador ficam as duas vozes:
+
+- **que ele ouve** — a voz que fala no idioma de destino, para o interlocutor.
+- **que eu ouço** — a voz que fala no seu idioma, traduzindo o interlocutor.
+
+As duas listas vêm do **catálogo ao vivo do seu próprio recurso Azure** — não de uma tabela fixa —, filtradas pelo idioma de cada lado, com o nome local, o gênero e a marca `HD`. No topo ficam dois apelidos, **Feminina** e **Masculina**: eles continuam escolhendo a melhor voz do catálogo a cada sessão (preferindo as famílias `DragonHD`, bem mais naturais que as neurais de primeira geração), enquanto escolher um nome concreto **fixa** aquela voz para sempre. As duas coisas são legítimas; a diferença é se você quer acompanhar o catálogo ou pinar o timbre.
+
+O botão **Ouvir** sintetiza uma frase na língua da voz e toca no seu fone. Ele usa a voz **efetiva**: com um apelido selecionado, você ouve exatamente a voz que a chamada usaria.
+
+Sem credenciais, ou com o catálogo fora do ar, as combos caem de volta nos dois apelidos e a linha de status diz o motivo. **Recarregar vozes** tenta de novo — é o que usar depois de salvar a chave.
+
+> Com o provedor **gemini** as vozes ficam desabilitadas: o modo de tradução dele não permite escolher voz (ADR-0006).
+
+### Aba Instância
+
+**Iniciar o Polyglotta ao entrar no Windows** cria uma tarefa agendada de logon, sem exigir administrador. Desmarcar remove a tarefa. A linha de status abaixo confirma ou diz por que falhou.
+
+**Já ativar a dublagem ao iniciar** faz o agente subir dublando, em vez de subir parado. Deixe desmarcado até confiar no arranjo de dispositivos.
+
+A aba também mostra onde fica o `config.json`. Os logs ficam em `%APPDATA%\Polyglotta\logs`, um arquivo por dia.
+
+## Usando numa chamada
+
+1. **Ativar** — pela tela ou pelo menu da bandeja. O ícone muda de estado.
+2. No Meet/Teams, escolha **CABLE Output** como microfone.
+3. No Meet/Teams, escolha como alto-falante o mesmo dispositivo que você marcou em **Saída da chamada**.
+4. Fale.
+
+**Transcrição**, no menu da bandeja, abre uma janela à parte com o que foi reconhecido e como foi traduzido, nos dois sentidos. Ela acompanha a conversa com a tela de configuração fechada, e rola sozinha para a linha mais recente.
+
+Se a sessão cair, o agente para e abre a tela com o erro. **Reconexão automática ainda não existe** (RF-07): hoje é você quem clica em Ativar de novo.
+
+## CLI (diagnóstico)
+
+O CLI lê e grava a **mesma** configuração da bandeja, então dá para configurar num e rodar no outro. Ele é o caminho quando você precisa de saída em texto, de um erro completo, ou de rodar sem interface.
+
+```powershell
+dotnet run --project src/Polyglotta.Cli -- --help
 dotnet run --project src/Polyglotta.Cli -- --list-devices
-dotnet run --project src/Polyglotta.Cli -- --from pt-BR --to en-US --voice en-US-JennyNeural
+dotnet run --project src/Polyglotta.Cli -- --show-config
+dotnet run --project src/Polyglotta.Cli -- --from pt-BR --to en-US --voice male
 ```
 
-No Meet/Teams, selecione **CABLE Output** como microfone.
+Gravar a configuração inteira de uma vez, sem a tela:
 
-### Dispositivos e eco
-
-O pipeline inbound captura, por loopback, o dispositivo em que o Meet/Teams toca e reproduz a tradução no seu fone. Esses dois **precisam ser dispositivos diferentes** — caso contrário a tradução seria recapturada e retraduzida em loop, e o app se recusa a iniciar. Configure o Meet/Teams para tocar num dispositivo (ex.: "CABLE In 16ch" ou uma saída secundária) e aponte o CLI:
-
-```bash
-dotnet run --project src/Polyglotta.Cli -- --mic "<id do microfone>" --loopback "<id do dispositivo do Meet>" --phones "<id do seu fone>"
+```powershell
+dotnet run --project src/Polyglotta.Cli -- --save-config --provider azure --from pt-BR --to en-US --mic "USB PnP" --loopback "27HC5R (2-" --phones "Speakers" --voice male --voice-in female
 ```
 
-Cada opção aceita **o id ou um trecho do nome** do dispositivo, o que costuma ser mais estável e legível:
+`--mic`, `--loopback` e `--phones` aceitam **o id ou um trecho do nome**. Se o trecho casar com mais de um dispositivo, o app lista os candidatos e pede algo mais específico. Os ids vêm de `--list-devices` (captura começa com `{0.0.1…}`, reprodução com `{0.0.0…}`).
 
-```bash
-dotnet run --project src/Polyglotta.Cli -- --mic "USB Audio" --loopback "Display Audio" --phones "Headphones"
+Credenciais, sem ecoar o valor no terminal:
+
+```powershell
+dotnet run --project src/Polyglotta.Cli -- --set-credential AZURE_SPEECH_KEY
+dotnet run --project src/Polyglotta.Cli -- --forget-credential AZURE_SPEECH_KEY
 ```
 
-Se o trecho casar com mais de um dispositivo, o app lista os candidatos e pede algo mais específico. Os ids vêm de `--list-devices` (captura começa com `{0.0.1…}`, reprodução com `{0.0.0…}`). Sem `--mic`, usa o microfone padrão de comunicação.
+Catálogo de vozes do seu recurso:
 
-> Dispositivos **desabilitados** no Windows não aparecem em `--list-devices` e não podem ser usados. Se o seu microfone sumiu da lista, abra `mmsys.cpl` → aba Gravação → botão direito → *Mostrar dispositivos desativados* → Ativar. Sem `--loopback`/`--phones` o CLI usa o dispositivo de comunicação padrão para ambos, o que dispara a guarda. "CABLE Input" é reservado ao microfone virtual e não pode ser usado em nenhum dos dois, assim como "CABLE Output" não pode ser o `--mic`.
-
-### Escolhendo o provedor de tradução
-
-```bash
-dotnet run --project src/Polyglotta.Cli -- --provider gemini ...
+```powershell
+dotnet run --project src/Polyglotta.Cli -- --list-voices          # idiomas de origem e destino
+dotnet run --project src/Polyglotta.Cli -- --list-voices pt-BR    # um locale específico
 ```
+
+O plano gratuito (F0) **não** reduz a qualidade da voz — ele limita volume de caracteres e concorrência.
+
+### Testando os dispositivos sem gastar Azure
+
+```powershell
+dotnet run --project src/Polyglotta.Cli -- --check-audio 10
+```
+
+Mede o microfone e o loopback pelo número de segundos indicado (padrão 8), mostrando uma barra de nível por segundo, e no fim toca 1 s de tom no fone e no "CABLE Input". Não exige credencial nenhuma. Sai com código 1 se o microfone não captou voz alguma — útil como verificação antes de uma reunião.
+
+### Escolhendo o provedor
 
 | | `azure` (padrão) | `gemini` |
 |---|---|---|
 | Arquitetura | STT → tradução → TTS | fala-para-fala nativo |
 | Credenciais | `AZURE_SPEECH_KEY`, `AZURE_SPEECH_REGION` | `GEMINI_API_KEY`, ou `GOOGLE_CLOUD_PROJECT` + `GOOGLE_CLOUD_LOCATION` (Vertex AI) |
-| Escolha de voz | sim (`--voice`, `--voice-in`) | **não** — o modo de tradução não expõe seleção de voz |
+| Escolha de voz | sim | **não** — o modo de tradução não expõe seleção de voz |
 | Maturidade | GA | modelo em preview (`GEMINI_LIVE_MODEL` fixa outro) |
 
-Ver ADR-0006. A comparação entre os dois é justamente o objetivo: meça a latência pelo resumo do encerramento e ouça as duas saídas antes de eleger um padrão.
+Ver ADR-0006. A comparação entre os dois é o objetivo: meça a latência pelo p95 e ouça as duas saídas antes de eleger um padrão.
 
-### Escolhendo a voz
-
-`--voice` define a voz que o outro lado ouve (idioma de saída) e `--voice-in` a que você ouve (idioma de entrada). Ambas aceitam `female`/`male` (ou `feminina`/`masculina`) e também o nome completo de uma voz Azure:
-
-```bash
-dotnet run --project src/Polyglotta.Cli -- --voice male --voice-in feminina ...
-```
-
-Com apelido de gênero, a voz é escolhida **consultando o catálogo do seu próprio recurso**, preferindo vozes **HD** (famílias `DragonHD`), que são bem mais naturais que as neurais de primeira geração como `JennyNeural` e `FranciscaNeural`. Consultar em vez de manter uma lista fixa evita nomes inventados: a documentação da Microsoft lista as vozes HD de forma incompleta e a disponibilidade varia por região e recurso. Para ver o que o seu recurso oferece:
-
-```bash
-dotnet run --project src/Polyglotta.Cli -- --list-voices          # locais de origem e destino
-dotnet run --project src/Polyglotta.Cli -- --list-voices pt-BR    # um locale específico
-```
-
-Vozes marcadas com `HD` na listagem são as de alta definição. O plano gratuito (F0) **não** reduz a qualidade da voz — ele limita volume de caracteres e concorrência.
-
-Na bandeja, a aba **Tradução** faz o mesmo pela tela: as duas combos trazem o catálogo do seu recurso para o idioma de cada lado, com os apelidos `Feminina`/`Masculina` no topo — eles continuam seguindo o catálogo, enquanto escolher um nome concreto fixa aquela voz. O botão **Ouvir** sintetiza uma frase na língua da voz e toca no fone configurado, usando a voz **efetiva**: se o apelido estiver selecionado, você ouve exatamente a voz que a chamada usaria. Sem credenciais, ou com o catálogo fora do ar, a tela cai de volta nos dois apelidos e diz por quê.
-
-### Testando os dispositivos sem gastar Azure
-
-```bash
-dotnet run --project src/Polyglotta.Cli -- --check-audio 10 --mic "..." --loopback "..." --phones "..."
-```
-
-Mede o microfone e o loopback pelo número de segundos indicado (padrão 8), mostrando uma barra de nível por segundo, e no fim toca 1 s de tom no fone e no "CABLE Input". Não exige `AZURE_SPEECH_KEY`. Sai com código 1 se o microfone não captou voz alguma — útil como verificação antes de uma reunião.
-
-### O log não mostra nenhuma transcrição
+## Quando não aparece transcrição nenhuma
 
 A cada 5 s o app avalia o nível de entrada de cada pipeline. Se aparecer
 
@@ -128,13 +164,17 @@ warn: [outbound] entrada sem sinal: 250 frames em 5s, pico 0,0 % do máximo.
 
 o áudio está chegando, mas mudo: microfone desconectado, mudo no Windows, ou — no caso do inbound — nada tocando no dispositivo capturado por loopback. Enquanto a entrada for silêncio, o Azure segmenta o áudio e devolve resultados vazios, registrados como `segmento sem fala reconhecida` (nível Debug).
 
+## Ícones
+
+O ícone tem três estados: ativo, parado e com erro. A arte é vetorial e vive em `docs/design/*.svg`; `src/Polyglotta.Tray/Assets/*.png` e o `.ico` do executável são rasterizações dela. Para mudar o ícone, mude o SVG e re-renderize — não edite o PNG.
+
 ## Desenvolvimento com Claude Code
 
-Este repositório é preparado para desenvolvimento agêntico: contexto em `CLAUDE.md`, requisitos em `docs/prd/`, decisões em `docs/adr/`, manuais de bibliotecas em `docs/man` skills do projeto em `.claude/skills/` e o comando `/new-adr` em `.claude/commands/`.
+Este repositório é preparado para desenvolvimento agêntico: contexto em `CLAUDE.md`, requisitos em `docs/prd/`, decisões em `docs/adr/`, manuais de bibliotecas em `docs/man`, skills do projeto em `.claude/skills/` e o comando `/new-adr` em `.claude/commands/`.
 
 ## Build e testes
 
-```bash
+```powershell
 dotnet build src/Polyglotta.sln
 dotnet test src/Polyglotta.sln
 ```
