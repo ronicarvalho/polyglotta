@@ -70,6 +70,7 @@ public partial class ConfigWindow : Window
         PreviewInButton.Click += async (_, _) => await PreviewAsync(outbound: false);
         RefreshDevicesButton.Click += (_, _) => LoadDevices(keepSelection: true);
         ValidateButton.Click += (_, _) => Validate();
+        CloseProblemsButton.Click += (_, _) => ProblemsPanel.IsVisible = false;
         SaveButton.Click += (_, _) => Save();
         ToggleButton.Click += async (_, _) => await ToggleAsync();
         SaveCredentialButton.Click += (_, _) => SaveCredential();
@@ -329,11 +330,13 @@ public partial class ConfigWindow : Window
     {
         if (problems.Count == 0)
         {
-            ProblemsList.ItemsSource = new[] { "Tudo certo: dispositivos resolvidos e credenciais presentes." };
+            ProblemsTitle.Text = "Tudo certo";
+            ProblemsList.ItemsSource = new[] { "Dispositivos resolvidos e credenciais presentes." };
             ProblemsPanel.IsVisible = true;
             return;
         }
 
+        ProblemsTitle.Text = problems.Count == 1 ? "1 pendência" : $"{problems.Count} pendências";
         ProblemsList.ItemsSource = problems.Select(p => $"• {p.Message}").ToList();
         ProblemsPanel.IsVisible = true;
     }

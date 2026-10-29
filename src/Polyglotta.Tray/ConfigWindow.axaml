@@ -53,16 +53,22 @@
             Margin="0,0,0,12"
             Background="#22D97706" BorderBrush="#66D97706" BorderThickness="1"
             CornerRadius="6" Padding="12">
-      <StackPanel Spacing="6">
-        <TextBlock Text="Pendências" FontWeight="SemiBold" />
-        <ItemsControl x:Name="ProblemsList">
+      <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="*,Auto">
+        <TextBlock Grid.Row="0" Grid.Column="0" x:Name="ProblemsTitle"
+                   Text="Pendências" FontWeight="SemiBold" VerticalAlignment="Center" />
+        <Button Grid.Row="0" Grid.Column="1" x:Name="CloseProblemsButton"
+                Content="✕" FontSize="12" Width="24" Height="24" Padding="0"
+                Background="Transparent" BorderThickness="0"
+                ToolTip.Tip="Fechar este aviso" />
+        <ItemsControl Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" x:Name="ProblemsList"
+                      Margin="0,6,0,0">
           <ItemsControl.ItemTemplate>
             <DataTemplate>
               <TextBlock Text="{Binding}" TextWrapping="Wrap" Margin="0,2" />
             </DataTemplate>
           </ItemsControl.ItemTemplate>
         </ItemsControl>
-      </StackPanel>
+      </Grid>
     </Border>
 
     <TabControl x:Name="Tabs">
